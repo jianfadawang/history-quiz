@@ -247,19 +247,15 @@ function renderHeader() {
   var answered = Object.keys(userAnswers).length;
   var pct = total > 0 ? Math.round((answered / total) * 100) : 0;
   var html = '<div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-text">' + answered + '/' + total + '</span></div>';
-  if (mode === 'practice') {
-    html += '<div style="position:relative"><button class="status-btn" id="statusBtn">📋</button><div class="status-panel" id="statusPanel"></div></div>';
-  }
+  html += '<div style="position:relative"><button class="status-btn" id="statusBtn">📋</button><div class="status-panel" id="statusPanel"></div></div>';
   el.innerHTML = html;
-  if (mode === 'practice') {
-    document.getElementById('statusBtn').addEventListener('click', function(e) {
-      e.stopPropagation();
-      var panel = document.getElementById('statusPanel');
-      renderStatusPanel();
-      panel.classList.toggle('show');
-    });
-    document.addEventListener('click', function() { var p = document.getElementById('statusPanel'); if (p) p.classList.remove('show'); });
-  }
+  document.getElementById('statusBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    var panel = document.getElementById('statusPanel');
+    renderStatusPanel();
+    panel.classList.toggle('show');
+  });
+  document.addEventListener('click', function() { var p = document.getElementById('statusPanel'); if (p) p.classList.remove('show'); });
 }
 
 function renderStatusPanel() {
