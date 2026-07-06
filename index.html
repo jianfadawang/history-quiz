@@ -260,16 +260,19 @@ function renderHeader() {
 
 function renderStatusPanel() {
   var el = document.getElementById('statusPanel'); if (!el) return;
-  var doneCount = currentQuestions.filter(function(q) { return isDone(q); }).length;
   var total = currentQuestions.length;
-  var html = '<h4>完成状态（' + doneCount + '/' + total + '）<br><span style="font-weight:400;font-size:11px">绿色=已刷 灰色=未刷 蓝色框=当前</span></h4><div class="status-grid">';
+  var doneCount = 0;
+  var html = '<h4>完成状态（<span id="statusDoneCount">0</span>/' + total + '）<br><span style="font-weight:400;font-size:11px">绿色=已答 灰色=未答 蓝色框=当前</span></h4><div class="status-grid">';
   currentQuestions.forEach(function(q, i) {
-    var d = isDone(q);
+    var d = (userAnswers[i] !== undefined);
+    if (mode === 'practice') d = d || isDone(q);
+    if (d) doneCount++;
     var cur = (i === currentIndex) ? ' current' : '';
     html += '<div class="status-circle' + (d ? ' done' : '') + cur + '" data-idx="' + i + '" title="第' + (i+1) + '题' + (d ? ' ✓' : '') + '">' + (i + 1) + '</div>';
   });
   html += '</div>';
   el.innerHTML = html;
+  el.querySelector('#statusDoneCount').textContent = doneCount;
   el.querySelectorAll('.status-circle').forEach(function(circle) {
     circle.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -397,7 +400,12 @@ function renderQuiz() {
     feedbackHtml = '<div class="feedback show ' + (isCorrect ? 'correct' : 'incorrect') + '">' + (isCorrect ? '✓ 回答正确！' : '✗ 回答错误，正确答案是 <strong>' + correctDisplay + '</strong>') + '</div>';
   }
 
-  el.innerHTML = '<div class="quiz-header"><div class="quiz-info"><span>' + typeLabel + '</span> · 第 <span>' + qNum + '</span>/<span>' + total + '</span> 题' + (mode === 'test' ? '' : '<span class="chapter-tag">' + q.chapter + '</span>') + '</div></div><div class="question-card"><div class="question-num">第 ' + qNum + ' 题</div><div class="question-text">' + q.question + '</div>' + optionsHtml + feedbackHtml + '</div><div class="nav-btns">' + (currentIndex > 0 ? '<button class="btn btn-outline" id="prevBtn">上一题</button>' : '<div></div>') + (hasAnswered ? '<button class="btn btn-primary" id="nextBtn">' + (currentIndex < total - 1 ? '下一题' : '查看结果') + '</button>' : (q.type !== 'multi' ? '<button class="btn btn-outline btn-sm" id="skipBtn" style="flex:0;margin-left:auto">跳过</button>' : '')) + (!hasAnswered && q.type === 'multi' ? '<button class="btn btn-primary" id="confirmBtn" style="flex:1">确认答案</button>' : '') + '</div>';
+  var submitBtnHtml = '';
+  if (mode === 'test' && !hasAnswered) {
+    submitBtnHtml = '<button class="btn btn-outline btn-sm" id="submitBtn" style="flex:0;background:#c0392b;color:#fff;border-color:#c0392b">提交</button>';
+  }
+
+  el.innerHTML = '<div class="quiz-header"><div class="quiz-info"><span>' + typeLabel + '</span> · 第 <span>' + qNum + '</span>/<span>' + total + '</span> 题' + (mode === 'test' ? '' : '<span class="chapter-tag">' + q.chapter + '</span>') + '</div></div><div class="question-card"><div class="question-num">第 ' + qNum + ' 题</div><div class="question-text">' + q.question + '</div>' + optionsHtml + feedbackHtml + '</div><div class="nav-btns">' + (currentIndex > 0 ? '<button class="btn btn-outline" id="prevBtn">上一题</button>' : '<div></div>') + (hasAnswered ? '<button class="btn btn-primary" id="nextBtn">' + (currentIndex < total - 1 ? '下一题' : '查看结果') + '</button>' : (q.type !== 'multi' ? '<button class="btn btn-outline btn-sm" id="skipBtn" style="flex:0;margin-left:auto">跳过</button>' : '')) + (!hasAnswered && q.type === 'multi' ? '<button class="btn btn-primary" id="confirmBtn" style="flex:1">确认答案</button>' : '') + submitBtnHtml + '</div>';
 
   if (!hasAnswered) {
     if (q.type === 'single') {
@@ -438,6 +446,12 @@ function renderQuiz() {
     }
     var sb = el.querySelector('#skipBtn');
     if (sb) sb.addEventListener('click', function() { currentIndex++; renderQuiz(); renderHeader(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    var subBtn = el.querySelector('#submitBtn');
+    if (subBtn) subBtn.addEventListener('click', function() {
+      if (Object.keys(userAnswers).length === 0) { alert('请至少回答一道题再提交'); return; }
+      var ok = confirm('确定要提交吗？未作答的题目将计为错误。');
+      if (ok) { renderResult(el); renderHeader(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    });
   }
 
   var pb = el.querySelector('#prevBtn');
