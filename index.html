@@ -335,17 +335,19 @@ function renderQuiz() {
   var userAns = userAnswers[currentIndex];
   var optionsHtml = '';
   if (q.type === 'tf') {
-    var labels = ['对', '错'];
-    optionsHtml = '<div class="tf-options">';
-    labels.forEach(function(label, i) {
-      var cls = 'tf-option';
+    var tfLabels = ['对', '错'];
+    var tfLetters = ['A', 'B'];
+    optionsHtml = '<div class="options">';
+    tfLabels.forEach(function(label, i) {
+      var cls = 'option';
+      var ansVal = i === 0;
       if (hasAnswered) cls += ' disabled';
-      if (userAns !== undefined && ((userAns === true && i === 0) || (userAns === false && i === 1))) cls += ' selected';
+      if (userAns !== undefined && userAns === ansVal) cls += ' selected';
       if (hasAnswered) {
-        if (q.answer === (i === 0)) cls += ' correct';
-        if (userAns !== undefined && (userAns === (i === 0)) && userAns !== q.answer) cls += ' incorrect';
+        if (q.answer === ansVal) cls += ' correct';
+        if (userAns !== undefined && userAns === ansVal && userAns !== q.answer) cls += ' incorrect';
       }
-      optionsHtml += '<div class="' + cls + '" data-answer="' + (i === 0) + '">' + label + '</div>';
+      optionsHtml += '<div class="' + cls + '" data-answer="' + ansVal + '"><span class="option-letter">' + tfLetters[i] + '</span><span>' + label + '</span></div>';
     });
     optionsHtml += '</div>';
   } else if (q.type === 'multi') {
@@ -425,7 +427,7 @@ function renderQuiz() {
         renderQuiz(); renderHeader();
       });
     } else if (q.type === 'tf') {
-      el.querySelectorAll('.tf-option').forEach(function(opt) {
+      el.querySelectorAll('.option').forEach(function(opt) {
         opt.addEventListener('click', function() {
           userAnswers[currentIndex] = opt.dataset.answer === 'true';
           showFeedback[currentIndex] = true;
