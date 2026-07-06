@@ -44,22 +44,48 @@ body {
 }
 .status-btn:hover { border-color: var(--primary-light); background: #f0f3f9; }
 .status-panel {
-  position: absolute; top: 42px; right: 0; width: 260px; max-height: 340px;
+  position: absolute; top: 42px; right: 0; width: 300px; max-height: 380px;
   overflow-y: auto; background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 12px; display: none; z-index: 200;
+  border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 16px; display: none; z-index: 200;
 }
 .status-panel.show { display: block; }
-.status-panel h4 { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500; }
-.status-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 5px 8px; border-radius: 5px; font-size: 12px; cursor: pointer; transition: background var(--transition);
+.status-panel h4 { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 500; }
+.status-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.status-circle {
+  width: 100%; aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  border: 1.5px solid #d1d5db;
+  color: var(--text-secondary);
+  background: var(--surface);
 }
-.status-item:hover { background: #f0f3f9; }
-.status-item.done { color: var(--correct); }
-.status-item.undone { color: var(--text-secondary); }
-.status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.status-dot.done { background: var(--correct); }
-.status-dot.undone { background: #d1d5db; }
+.status-circle:hover { transform: scale(1.15); border-color: var(--primary-light); }
+.status-circle.done { background: var(--correct); color: #fff; border-color: var(--correct); }
+.status-circle.current { border-color: var(--primary); border-width: 2.5px; }
+.back-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: var(--surface); cursor: pointer; display: none; align-items: center;
+  justify-content: center; font-size: 14px; font-weight: 700; color: var(--text-secondary);
+  transition: all var(--transition); flex-shrink: 0;
+}
+.back-btn:hover { border-color: var(--primary-light); color: var(--primary); background: #f0f3f9; }
+.back-btn.visible { display: flex; }
+
+/* Confirm dialog */
+.confirm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+}
+.confirm-dialog {
+  background: var(--surface); border-radius: var(--radius); padding: 24px 28px;
+  text-align: center; box-shadow: var(--shadow-md); max-width: 320px; width: 90%;
+}
+.confirm-dialog p { font-size: 14px; margin-bottom: 16px; color: var(--text); }
+.confirm-dialog .btns { display: flex; gap: 10px; }
+.confirm-dialog .btns .btn { flex: 1; }
 .main { max-width: 760px; margin: 0 auto; padding: 36px 20px 80px; }
 .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
 .mode-card {
@@ -148,6 +174,7 @@ body {
 <body>
 <div class="header">
   <div class="header-left">
+    <button class="back-btn" id="headerBackBtn" title="返回">←</button>
     <div class="logo">史</div>
     <span class="header-title">中国近现代史纲要 · 题库</span>
   </div>
@@ -178,9 +205,44 @@ function savePracticeDone() {
 function isDone(q) { return !!practiceDone[getGlobalIdx(q)]; }
 function markDone(q) { practiceDone[getGlobalIdx(q)] = true; savePracticeDone(); }
 
+function goBack() {
+  if (Object.keys(userAnswers).length === 0) {
+    doGoBack();
+    return;
+  }
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = '<div class="confirm-dialog"><p>确定要返回吗？<br>当前答题进度将丢失。</p><div class="btns"><button class="btn btn-outline btn-sm" id="confirmCancel">取消</button><button class="btn btn-primary btn-sm" id="confirmOk" style="background:#c0392b">确认返回</button></div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#confirmCancel').addEventListener('click', function() { overlay.remove(); });
+  overlay.querySelector('#confirmOk').addEventListener('click', function() { overlay.remove(); doGoBack(); });
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+function doGoBack() {
+  if (mode === 'practice' && subMode) {
+    currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+    renderMain();
+  } else if (mode === 'test') {
+    currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+    mode = null;
+    renderMain();
+  } else {
+    mode = null; subMode = null;
+    currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+    renderMain();
+  }
+}
+
 function renderHeader() {
+  var backBtn = document.getElementById('headerBackBtn');
   var el = document.getElementById('headerRight');
-  if (!mode || currentQuestions.length === 0) { el.innerHTML = ''; return; }
+  if (!mode || currentQuestions.length === 0) {
+    el.innerHTML = '';
+    backBtn.classList.remove('visible');
+    return;
+  }
+  backBtn.classList.add('visible');
   var total = currentQuestions.length;
   var answered = Object.keys(userAnswers).length;
   var pct = total > 0 ? Math.round((answered / total) * 100) : 0;
@@ -204,16 +266,18 @@ function renderStatusPanel() {
   var el = document.getElementById('statusPanel'); if (!el) return;
   var doneCount = currentQuestions.filter(function(q) { return isDone(q); }).length;
   var total = currentQuestions.length;
-  var html = '<h4>完成状态（' + doneCount + '/' + total + '）</h4>';
+  var html = '<h4>完成状态（' + doneCount + '/' + total + '）<br><span style="font-weight:400;font-size:11px">绿色=已刷 灰色=未刷 蓝色框=当前</span></h4><div class="status-grid">';
   currentQuestions.forEach(function(q, i) {
     var d = isDone(q);
-    html += '<div class="status-item ' + (d ? 'done' : 'undone') + '" data-idx="' + i + '"><span>第 ' + (i + 1) + ' 题</span><span class="status-dot ' + (d ? 'done' : 'undone') + '"></span></div>';
+    var cur = (i === currentIndex) ? ' current' : '';
+    html += '<div class="status-circle' + (d ? ' done' : '') + cur + '" data-idx="' + i + '" title="第' + (i+1) + '题' + (d ? ' ✓' : '') + '">' + (i + 1) + '</div>';
   });
+  html += '</div>';
   el.innerHTML = html;
-  el.querySelectorAll('.status-item').forEach(function(item) {
-    item.addEventListener('click', function(e) {
+  el.querySelectorAll('.status-circle').forEach(function(circle) {
+    circle.addEventListener('click', function(e) {
       e.stopPropagation();
-      currentIndex = parseInt(item.dataset.idx);
+      currentIndex = parseInt(circle.dataset.idx);
       renderQuiz();
       el.classList.remove('show');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -421,6 +485,7 @@ function renderResult(el) {
 }
 
 loadPracticeDone();
+document.getElementById('headerBackBtn').addEventListener('click', goBack);
 renderMain();
 </script>
 </body>
