@@ -44,22 +44,48 @@ body {
 }
 .status-btn:hover { border-color: var(--primary-light); background: #f0f3f9; }
 .status-panel {
-  position: absolute; top: 42px; right: 0; width: 260px; max-height: 340px;
+  position: absolute; top: 42px; right: 0; width: 300px; max-height: 380px;
   overflow-y: auto; background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 12px; display: none; z-index: 200;
+  border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 16px; display: none; z-index: 200;
 }
 .status-panel.show { display: block; }
-.status-panel h4 { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500; }
-.status-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 5px 8px; border-radius: 5px; font-size: 12px; cursor: pointer; transition: background var(--transition);
+.status-panel h4 { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 500; }
+.status-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.status-circle {
+  width: 100%; aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  border: 1.5px solid #d1d5db;
+  color: var(--text-secondary);
+  background: var(--surface);
 }
-.status-item:hover { background: #f0f3f9; }
-.status-item.done { color: var(--correct); }
-.status-item.undone { color: var(--text-secondary); }
-.status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.status-dot.done { background: var(--correct); }
-.status-dot.undone { background: #d1d5db; }
+.status-circle:hover { transform: scale(1.15); border-color: var(--primary-light); }
+.status-circle.done { background: var(--correct); color: #fff; border-color: var(--correct); }
+.status-circle.current { border-color: var(--primary); border-width: 2.5px; }
+.back-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: var(--surface); cursor: pointer; display: none; align-items: center;
+  justify-content: center; font-size: 14px; font-weight: 700; color: var(--text-secondary);
+  transition: all var(--transition); flex-shrink: 0;
+}
+.back-btn:hover { border-color: var(--primary-light); color: var(--primary); background: #f0f3f9; }
+.back-btn.visible { display: flex; }
+
+/* Confirm dialog */
+.confirm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+}
+.confirm-dialog {
+  background: var(--surface); border-radius: var(--radius); padding: 24px 28px;
+  text-align: center; box-shadow: var(--shadow-md); max-width: 320px; width: 90%;
+}
+.confirm-dialog p { font-size: 14px; margin-bottom: 16px; color: var(--text); }
+.confirm-dialog .btns { display: flex; gap: 10px; }
+.confirm-dialog .btns .btn { flex: 1; }
 .main { max-width: 760px; margin: 0 auto; padding: 36px 20px 80px; }
 .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
 .mode-card {
@@ -148,6 +174,7 @@ body {
 <body>
 <div class="header">
   <div class="header-left">
+    <button class="back-btn" id="headerBackBtn" title="返回">←</button>
     <div class="logo">史</div>
     <span class="header-title">中国近现代史纲要 · 题库</span>
   </div>
@@ -178,46 +205,97 @@ function savePracticeDone() {
 function isDone(q) { return !!practiceDone[getGlobalIdx(q)]; }
 function markDone(q) { practiceDone[getGlobalIdx(q)] = true; savePracticeDone(); }
 
+function goBack() {
+  if (Object.keys(userAnswers).length === 0) {
+    doGoBack();
+    return;
+  }
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = '<div class="confirm-dialog"><p>确定要返回吗？<br>当前答题进度将丢失。</p><div class="btns"><button class="btn btn-outline btn-sm" id="confirmCancel">取消</button><button class="btn btn-primary btn-sm" id="confirmOk" style="background:#c0392b">确认返回</button></div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#confirmCancel').addEventListener('click', function() { overlay.remove(); });
+  overlay.querySelector('#confirmOk').addEventListener('click', function() { overlay.remove(); doGoBack(); });
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+function doGoBack() {
+  if (mode === 'practice' && subMode) {
+    currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+    renderMain();
+  } else if (mode === 'test') {
+    currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+    mode = null;
+    renderMain();
+  } else {
+    mode = null; subMode = null;
+    currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+    renderMain();
+  }
+}
+
 function renderHeader() {
+  var backBtn = document.getElementById('headerBackBtn');
   var el = document.getElementById('headerRight');
-  if (!mode || currentQuestions.length === 0) { el.innerHTML = ''; return; }
+  if (!mode || currentQuestions.length === 0) {
+    el.innerHTML = '';
+    backBtn.classList.remove('visible');
+    return;
+  }
+  backBtn.classList.add('visible');
   var total = currentQuestions.length;
   var answered = Object.keys(userAnswers).length;
   var pct = total > 0 ? Math.round((answered / total) * 100) : 0;
   var html = '<div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-text">' + answered + '/' + total + '</span></div>';
-  if (mode === 'practice') {
-    html += '<div style="position:relative"><button class="status-btn" id="statusBtn">📋</button><div class="status-panel" id="statusPanel"></div></div>';
-  }
+  html += '<div style="position:relative"><button class="status-btn" id="statusBtn">📋</button><div class="status-panel" id="statusPanel"></div></div>';
   el.innerHTML = html;
-  if (mode === 'practice') {
-    document.getElementById('statusBtn').addEventListener('click', function(e) {
-      e.stopPropagation();
-      var panel = document.getElementById('statusPanel');
-      renderStatusPanel();
-      panel.classList.toggle('show');
-    });
-    document.addEventListener('click', function() { var p = document.getElementById('statusPanel'); if (p) p.classList.remove('show'); });
-  }
+  document.getElementById('statusBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    var panel = document.getElementById('statusPanel');
+    renderStatusPanel();
+    panel.classList.toggle('show');
+  });
+  document.addEventListener('click', function() { var p = document.getElementById('statusPanel'); if (p) p.classList.remove('show'); });
 }
 
 function renderStatusPanel() {
   var el = document.getElementById('statusPanel'); if (!el) return;
-  var doneCount = currentQuestions.filter(function(q) { return isDone(q); }).length;
   var total = currentQuestions.length;
-  var html = '<h4>完成状态（' + doneCount + '/' + total + '）</h4>';
+  var doneCount = 0;
+  var html = '<h4>完成状态（<span id="statusDoneCount">0</span>/' + total + '）<br><span style="font-weight:400;font-size:11px">绿色=已答 灰色=未答 蓝色框=当前</span></h4><div class="status-grid">';
   currentQuestions.forEach(function(q, i) {
-    var d = isDone(q);
-    html += '<div class="status-item ' + (d ? 'done' : 'undone') + '" data-idx="' + i + '"><span>第 ' + (i + 1) + ' 题</span><span class="status-dot ' + (d ? 'done' : 'undone') + '"></span></div>';
+    var d = (userAnswers[i] !== undefined);
+    if (mode === 'practice') d = d || isDone(q);
+    if (d) doneCount++;
+    var cur = (i === currentIndex) ? ' current' : '';
+    html += '<div class="status-circle' + (d ? ' done' : '') + cur + '" data-idx="' + i + '" title="第' + (i+1) + '题' + (d ? ' ✓' : '') + '">' + (i + 1) + '</div>';
   });
+  html += '</div>';
+  if (mode === 'test') {
+    html += '<div style="text-align:center;margin-top:14px"><button class="btn btn-primary btn-sm" id="panelSubmitBtn" style="width:auto;padding:8px 32px;background:#c0392b">提交试卷</button></div>';
+  }
   el.innerHTML = html;
-  el.querySelectorAll('.status-item').forEach(function(item) {
-    item.addEventListener('click', function(e) {
+  el.querySelector('#statusDoneCount').textContent = doneCount;
+  el.querySelectorAll('.status-circle').forEach(function(circle) {
+    circle.addEventListener('click', function(e) {
       e.stopPropagation();
-      currentIndex = parseInt(item.dataset.idx);
+      currentIndex = parseInt(circle.dataset.idx);
       renderQuiz();
       el.classList.remove('show');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
+  });
+  var psb = el.querySelector('#panelSubmitBtn');
+  if (psb) psb.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (Object.keys(userAnswers).length === 0) { alert('请至少回答一道题再提交'); return; }
+    var ok = confirm('确定要提交试卷吗？未作答的题目将计为错误。');
+    if (ok) {
+      el.classList.remove('show');
+      renderResult(document.getElementById('main'));
+      renderHeader();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   });
 }
 
@@ -275,17 +353,19 @@ function renderQuiz() {
   var userAns = userAnswers[currentIndex];
   var optionsHtml = '';
   if (q.type === 'tf') {
-    var labels = ['对', '错'];
-    optionsHtml = '<div class="tf-options">';
-    labels.forEach(function(label, i) {
-      var cls = 'tf-option';
+    var tfLabels = ['对', '错'];
+    var tfLetters = ['A', 'B'];
+    optionsHtml = '<div class="options">';
+    tfLabels.forEach(function(label, i) {
+      var cls = 'option';
+      var ansVal = i === 0;
       if (hasAnswered) cls += ' disabled';
-      if (userAns !== undefined && ((userAns === true && i === 0) || (userAns === false && i === 1))) cls += ' selected';
+      if (userAns !== undefined && userAns === ansVal) cls += ' selected';
       if (hasAnswered) {
-        if (q.answer === (i === 0)) cls += ' correct';
-        if (userAns !== undefined && (userAns === (i === 0)) && userAns !== q.answer) cls += ' incorrect';
+        if (q.answer === ansVal) cls += ' correct';
+        if (userAns !== undefined && userAns === ansVal && userAns !== q.answer) cls += ' incorrect';
       }
-      optionsHtml += '<div class="' + cls + '" data-answer="' + (i === 0) + '">' + label + '</div>';
+      optionsHtml += '<div class="' + cls + '" data-answer="' + ansVal + '"><span class="option-letter">' + tfLetters[i] + '</span><span>' + label + '</span></div>';
     });
     optionsHtml += '</div>';
   } else if (q.type === 'multi') {
@@ -335,7 +415,30 @@ function renderQuiz() {
     feedbackHtml = '<div class="feedback show ' + (isCorrect ? 'correct' : 'incorrect') + '">' + (isCorrect ? '✓ 回答正确！' : '✗ 回答错误，正确答案是 <strong>' + correctDisplay + '</strong>') + '</div>';
   }
 
-  el.innerHTML = '<div class="quiz-header"><div class="quiz-info"><span>' + typeLabel + '</span> · 第 <span>' + qNum + '</span>/<span>' + total + '</span> 题' + (mode === 'test' ? '' : '<span class="chapter-tag">' + q.chapter + '</span>') + '</div></div><div class="question-card"><div class="question-num">第 ' + qNum + ' 题</div><div class="question-text">' + q.question + '</div>' + optionsHtml + feedbackHtml + '</div><div class="nav-btns">' + (currentIndex > 0 ? '<button class="btn btn-outline" id="prevBtn">上一题</button>' : '<div></div>') + (hasAnswered ? '<button class="btn btn-primary" id="nextBtn">' + (currentIndex < total - 1 ? '下一题' : '查看结果') + '</button>' : (q.type !== 'multi' ? '<button class="btn btn-outline btn-sm" id="skipBtn" style="flex:0;margin-left:auto">跳过</button>' : '')) + (!hasAnswered && q.type === 'multi' ? '<button class="btn btn-primary" id="confirmBtn" style="flex:1">确认答案</button>' : '') + '</div>';
+  var submitBtnHtml = '';
+  if (mode === 'test' && !hasAnswered) {
+    submitBtnHtml = '<button class="btn btn-outline btn-sm" id="submitBtn" style="flex:0;background:#c0392b;color:#fff;border-color:#c0392b">提交</button>';
+  }
+
+  var navHtml = '';
+  var isLast = (currentIndex >= total - 1);
+  if (hasAnswered) {
+    navHtml += (currentIndex > 0 ? '<button class="btn btn-outline" id="prevBtn">上一题</button>' : '<div></div>');
+    navHtml += '<button class="btn btn-primary" id="nextBtn">' + (isLast ? '查看结果' : '下一题') + '</button>';
+  } else {
+    navHtml += (currentIndex > 0 ? '<button class="btn btn-outline" id="prevBtn">上一题</button>' : '<div></div>');
+    if (q.type === 'multi') {
+      navHtml += '<button class="btn btn-primary" id="confirmBtn" style="flex:1">确认答案</button>';
+    } else {
+      if (mode === 'test' && isLast) {
+        navHtml += '<button class="btn btn-primary" id="submitTestBtn" style="flex:1;background:#c0392b">提交</button>';
+      } else {
+        navHtml += '<button class="btn btn-outline" id="skipBtn">下一题</button>';
+      }
+    }
+  }
+
+  el.innerHTML = '<div class="quiz-header"><div class="quiz-info"><span>' + typeLabel + '</span> · 第 <span>' + qNum + '</span>/<span>' + total + '</span> 题' + (mode === 'test' ? '' : '<span class="chapter-tag">' + q.chapter + '</span>') + '</div></div><div class="question-card"><div class="question-num">第 ' + qNum + ' 题</div><div class="question-text">' + q.question + '</div>' + optionsHtml + feedbackHtml + '</div><div class="nav-btns">' + navHtml + '</div>';
 
   if (!hasAnswered) {
     if (q.type === 'single') {
@@ -365,7 +468,7 @@ function renderQuiz() {
         renderQuiz(); renderHeader();
       });
     } else if (q.type === 'tf') {
-      el.querySelectorAll('.tf-option').forEach(function(opt) {
+      el.querySelectorAll('.option').forEach(function(opt) {
         opt.addEventListener('click', function() {
           userAnswers[currentIndex] = opt.dataset.answer === 'true';
           showFeedback[currentIndex] = true;
@@ -376,6 +479,11 @@ function renderQuiz() {
     }
     var sb = el.querySelector('#skipBtn');
     if (sb) sb.addEventListener('click', function() { currentIndex++; renderQuiz(); renderHeader(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    var stb = el.querySelector('#submitTestBtn');
+    if (stb) stb.addEventListener('click', function() {
+      var ok = confirm('确定要提交吗？未作答的题目将计为错误。');
+      if (ok) { renderResult(el); renderHeader(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    });
   }
 
   var pb = el.querySelector('#prevBtn');
@@ -421,6 +529,7 @@ function renderResult(el) {
 }
 
 loadPracticeDone();
+document.getElementById('headerBackBtn').addEventListener('click', goBack);
 renderMain();
 </script>
 </body>
