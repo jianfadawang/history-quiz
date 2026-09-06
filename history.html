@@ -472,11 +472,6 @@ function renderQuiz() {
     }
   }
 
-  var submitBtnHtml = '';
-  if (mode === 'test' && !hasAnswered) {
-    submitBtnHtml = '<button class="btn btn-outline btn-sm" id="submitBtn" style="flex:0;background:#c0392b;color:#fff;border-color:#c0392b">提交</button>';
-  }
-
   var navHtml = '';
   var isLast = (currentIndex >= total - 1);
   if (hasAnswered) {
@@ -485,12 +480,19 @@ function renderQuiz() {
   } else {
     navHtml += (currentIndex > 0 ? '<button class="btn btn-outline" id="prevBtn">上一题</button>' : '<div></div>');
     if (q.type === 'multi') {
-      navHtml += '<button class="btn btn-primary" id="confirmBtn" style="flex:1">确认答案</button>';
+      var mSel = userAnswers[currentIndex];
+      var mDisabled = (!mSel || mSel === '');
+      navHtml += '<button class="btn btn-primary" id="confirmBtn" style="flex:1;' + (mDisabled ? 'opacity:.45;pointer-events:none' : '') + '">确认答案</button>';
     } else {
+      var cSel = userAnswers[currentIndex];
+      var cDisabled = (cSel === undefined || cSel === '');
+      var confStyle = 'flex:1;' + (cDisabled ? 'opacity:.45;pointer-events:none' : '');
       if (mode === 'test' && isLast) {
         navHtml += '<button class="btn btn-primary" id="submitTestBtn" style="flex:1;background:#c0392b">提交</button>';
+        navHtml += '<button class="btn btn-primary" id="confirmBtn" style="' + confStyle + '">确认</button>';
       } else {
         navHtml += '<button class="btn btn-outline" id="skipBtn">下一题</button>';
+        navHtml += '<button class="btn btn-primary" id="confirmBtn" style="' + confStyle + '">确认</button>';
       }
     }
   }
@@ -502,10 +504,15 @@ function renderQuiz() {
       el.querySelectorAll('.option').forEach(function(opt) {
         opt.addEventListener('click', function() {
           userAnswers[currentIndex] = opt.dataset.label;
-          showFeedback[currentIndex] = true;
-          if (mode === 'practice') markDone(q);
-          renderQuiz(); renderHeader(); persistSession();
+          renderQuiz(); persistSession();
         });
+      });
+      var scb = el.querySelector('#confirmBtn');
+      if (scb) scb.addEventListener('click', function() {
+        if (!userAnswers[currentIndex]) return;
+        showFeedback[currentIndex] = true;
+        if (mode === 'practice') markDone(q);
+        renderQuiz(); renderHeader(); persistSession();
       });
     } else if (q.type === 'multi') {
       if (!userAnswers[currentIndex]) userAnswers[currentIndex] = '';
@@ -514,7 +521,7 @@ function renderQuiz() {
           var label = opt.dataset.label;
           var sel = userAnswers[currentIndex] || '';
           userAnswers[currentIndex] = sel.indexOf(label) !== -1 ? sel.replace(label, '') : sel + label;
-          renderQuiz();
+          renderQuiz(); persistSession();
         });
       });
       var cb = el.querySelector('#confirmBtn');
@@ -528,10 +535,15 @@ function renderQuiz() {
       el.querySelectorAll('.option').forEach(function(opt) {
         opt.addEventListener('click', function() {
           userAnswers[currentIndex] = opt.dataset.answer === 'true';
-          showFeedback[currentIndex] = true;
-          if (mode === 'practice') markDone(q);
-          renderQuiz(); renderHeader(); persistSession();
+          renderQuiz(); persistSession();
         });
+      });
+      var tcb = el.querySelector('#confirmBtn');
+      if (tcb) tcb.addEventListener('click', function() {
+        if (userAnswers[currentIndex] === undefined) return;
+        showFeedback[currentIndex] = true;
+        if (mode === 'practice') markDone(q);
+        renderQuiz(); renderHeader(); persistSession();
       });
     }
     var sb = el.querySelector('#skipBtn');
