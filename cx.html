@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工程制图 · 题库</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f7f8fa; --surface: #ffffff; --border: #e6e8ec;
+  --text: #1a1a2e; --text-secondary: #6b7280;
+  --primary: #1e3a5f; --primary-light: #2d5a9e;
+  --accent: #b8944c;
+  --correct: #1b6d3f; --correct-bg: #e6f4ec;
+  --incorrect: #c0392b; --incorrect-bg: #fdecea;
+  --shadow: 0 1px 3px rgba(0,0,0,0.05); --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+  --radius: 12px; --radius-sm: 8px; --transition: 0.2s ease;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh;
+}
+.header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 28px; height: 56px; display: flex; align-items: center;
+  justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow);
+}
+.header-left { display: flex; align-items: center; gap: 10px; }
+.logo {
+  width: 30px; height: 30px; background: var(--primary); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 15px; font-weight: 700;
+}
+.header-title { font-size: 15px; font-weight: 600; }
+.header-right { display: flex; align-items: center; gap: 14px; }
+.progress-wrap { display: flex; align-items: center; gap: 8px; }
+.progress-bar { width: 120px; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--primary-light); border-radius: 3px; transition: width var(--transition); }
+.progress-text { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.status-btn {
+  width: 34px; height: 34px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; transition: all var(--transition); position: relative;
+}
+.status-btn:hover { border-color: var(--primary-light); background: #f0f3f9; }
+.status-panel {
+  position: absolute; top: 42px; right: 0; width: 300px; max-height: 380px;
+  overflow-y: auto; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 16px; display: none; z-index: 200;
+}
+.status-panel.show { display: block; }
+.status-panel h4 { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 500; }
+.status-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.status-circle {
+  width: 100%; aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  border: 1.5px solid #d1d5db;
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+.status-circle:hover { transform: scale(1.15); border-color: var(--primary-light); }
+.status-circle.done { background: var(--correct); color: #fff; border-color: var(--correct); }
+.status-circle.current { border-color: var(--primary); border-width: 2.5px; }
+.back-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: var(--surface); cursor: pointer; display: none; align-items: center;
+  justify-content: center; font-size: 14px; font-weight: 700; color: var(--text-secondary);
+  transition: all var(--transition); flex-shrink: 0;
+}
+.back-btn:hover { border-color: var(--primary-light); color: var(--primary); background: #f0f3f9; }
+.back-btn.visible { display: flex; }
+
+/* Confirm dialog */
+.confirm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+}
+.confirm-dialog {
+  background: var(--surface); border-radius: var(--radius); padding: 24px 28px;
+  text-align: center; box-shadow: var(--shadow-md); max-width: 320px; width: 90%;
+}
+.confirm-dialog p { font-size: 14px; margin-bottom: 16px; color: var(--text); }
+.confirm-dialog .btns { display: flex; gap: 10px; }
+.confirm-dialog .btns .btn { flex: 1; }
+.main { max-width: 760px; margin: 0 auto; padding: 36px 20px 80px; }
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+.mode-card {
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius);
+  padding: 28px 24px; cursor: pointer; transition: all var(--transition); text-align: center;
+}
+.mode-card:hover { border-color: var(--primary-light); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.mode-card.selected { border-color: var(--primary); background: #f5f7fc; }
+.mode-card .icon { font-size: 28px; margin-bottom: 8px; }
+.mode-card h3 { font-size: 17px; margin-bottom: 4px; font-weight: 600; }
+.mode-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.sub-mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.sub-mode-card {
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  padding: 18px 12px; cursor: pointer; text-align: center; transition: all var(--transition);
+  font-size: 14px; font-weight: 500;
+}
+.sub-mode-card:hover { border-color: var(--primary-light); }
+.sub-mode-card.selected { border-color: var(--primary); background: #f5f7fc; color: var(--primary); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 24px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all var(--transition); border: none; font-family: inherit;
+}
+.btn-primary { background: var(--primary); color: #fff; width: 100%; }
+.btn-primary:hover { background: var(--primary-light); box-shadow: var(--shadow-md); }
+.btn-outline { background: var(--surface); color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-outline:hover { background: #f5f7fc; }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.quiz-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.quiz-info { font-size: 13px; color: var(--text-secondary); }
+.quiz-info span { font-weight: 600; color: var(--text); }
+.question-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 28px 30px; margin-bottom: 14px; box-shadow: var(--shadow);
+}
+.question-num { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+.question-text { font-size: 16px; font-weight: 500; line-height: 1.75; }
+.options { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+.option {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; transition: all var(--transition); font-size: 14px; line-height: 1.5;
+}
+.option:hover { border-color: var(--primary-light); background: #fafbfd; }
+.option.selected { border-color: var(--primary); background: #eef2fa; }
+.option.correct { border-color: var(--correct); background: var(--correct-bg); }
+.option.incorrect { border-color: var(--incorrect); background: var(--incorrect-bg); }
+.option.disabled { pointer-events: none; }
+.option-letter {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; flex-shrink: 0;
+}
+.option.selected .option-letter { background: var(--primary); color: #fff; }
+.option.correct .option-letter { background: var(--correct); color: #fff; }
+.option.incorrect .option-letter { background: var(--incorrect); color: #fff; }
+.multi-hint { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.feedback { padding: 12px 16px; border-radius: var(--radius-sm); margin-top: 14px; font-size: 14px; font-weight: 500; display: none; }
+.feedback.show { display: block; }
+.feedback.correct { background: var(--correct-bg); color: var(--correct); }
+.feedback.incorrect { background: var(--incorrect-bg); color: var(--incorrect); }
+.explain-box {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 12px 16px; border-radius: var(--radius-sm); margin-top: 10px;
+  background: #f0f3f9; font-size: 13.5px; line-height: 1.65; color: var(--text);
+}
+.explain-label {
+  flex-shrink: 0; background: var(--primary-light); color: #fff;
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+}
+.nav-btns { display: flex; gap: 10px; margin-top: 16px; }
+.nav-btns .btn { flex: 1; }
+.result-card { background: var(--surface); border-radius: var(--radius); padding: 44px 36px; text-align: center; box-shadow: var(--shadow); }
+.result-score { font-size: 56px; font-weight: 700; color: var(--primary); }
+.result-detail { font-size: 14px; color: var(--text-secondary); margin: 10px 0 24px; }
+.result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+.result-stat { background: var(--bg); border-radius: var(--radius-sm); padding: 14px; }
+.result-stat .num { font-size: 22px; font-weight: 700; }
+.result-stat .label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.chapter-tag { display: inline-block; padding: 1px 8px; background: #f0f3f9; color: var(--primary-light); border-radius: 10px; font-size: 11px; margin-left: 8px; }
+.page-title { text-align: center; margin-bottom: 24px; }
+.page-title h2 { font-size: 20px; font-weight: 700; }
+.page-title p { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+@media (max-width: 600px) {
+  .mode-grid { grid-template-columns: 1fr; }
+  .sub-mode-grid { grid-template-columns: 1fr; }
+  .header { padding: 0 14px; }
+  .main { padding: 20px 12px 60px; }
+  .question-card { padding: 20px 18px; }
+  .progress-bar { width: 80px; }
+  .result-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <button class="back-btn" id="headerBackBtn" title="返回">←</button>
+    <div class="logo">史</div>
+    <span class="header-title">工程制图 · 题库</span>
+  </div>
+  <div class="header-right" id="headerRight"></div>
+</div>
+<div class="main" id="main"></div>
+<script>
+var ALL_QUESTIONS = [{"type": "single", "question": "相贯线上表示极限范围的点或转向线上的点，常称为(        )。", "options": [{"label": "A", "text": "一般点"}, {"label": "B", "text": "特殊点"}, {"label": "C", "text": "相贯点"}, {"label": "D", "text": "相交点"}], "answer": "B", "explain": "相贯线上位于转向轮廓线或极限位置的点称为特殊点，其余为一般点。A一般点需用辅助平面法求取；C、D均非标准术语。", "kpoint": "截交线与相贯线", "hot": 4, "id": 0, "chapter": "截交线与相贯线"}, {"type": "single", "question": "使用(        )画圆时，应尽可能使钢针和铅芯垂直于纸面。", "options": [{"label": "A", "text": "分规"}, {"label": "B", "text": "圆规"}, {"label": "C", "text": "三角板"}, {"label": "D", "text": "曲线板"}], "answer": "B", "explain": "画圆应使用圆规；A分规用于量取和等分线段，C三角板用于画直线和角度线，D曲线板用于绘制非圆曲线。", "kpoint": "制图工具与规范", "hot": 3, "id": 1, "chapter": "制图工具与规范"}, {"type": "single", "question": "一个点如果在H面上，它的三个投影(        )。", "options": [{"label": "A", "text": "一个投影在坐标轴上"}, {"label": "B", "text": "两个投影在坐标轴上"}, {"label": "C", "text": "三个投影在坐标轴上"}, {"label": "D", "text": "条件不够，不能确定"}], "answer": "B", "explain": "点在H面上即其Z坐标为零，H面投影与点重合，另两个投影落在相应投影轴上。A、C、D均与点的投影规律不符。", "kpoint": "投影与三视图", "hot": 4, "id": 2, "chapter": "投影与三视图"}, {"type": "single", "question": "在图样上标注形位公差，当公差值前面加注φ时，该被测要素的公差带形状是(        )。", "options": [{"label": "A", "text": "两同心圆或球形"}, {"label": "B", "text": "圆形或球形"}, {"label": "C", "text": "圆或圆柱"}, {"label": "D", "text": "两同轴圆柱"}], "answer": "C", "explain": "公差值前加注φ时，公差带形状为圆或圆柱形区域。A两同心圆对应圆度公差；B球形标注不适用；D两同轴圆柱是同轴度公差带，表述不全面。", "kpoint": "公差与配合", "hot": 5, "id": 3, "chapter": "公差与配合"}, {"type": "single", "question": "徒手画长斜线时，为了(        )，可将图纸旋转到适当角度，使它转成水平方向位置来画。", "options": [{"label": "A", "text": "画图清晰"}, {"label": "B", "text": "运笔方便"}, {"label": "C", "text": "测量准确"}, {"label": "D", "text": "看得清楚"}], "answer": "B", "explain": "徒手画长斜线时将图纸旋转成水平方向，是为了运笔方便。A清晰、C测量、D看清均不是旋转图纸的目的。", "kpoint": "制图工具与规范", "hot": 2, "id": 4, "chapter": "制图工具与规范"}, {"type": "single", "question": "劳动合同是劳动者与用人单位确定劳动关系、明确双方(        )的协议。", "options": [{"label": "A", "text": "权利和义务"}, {"label": "B", "text": "条件和义务"}, {"label": "C", "text": "权利和条件"}, {"label": "D", "text": "条件和原则"}], "answer": "A", "explain": "《劳动合同法》规定劳动合同是劳动者与用人单位确定劳动关系、明确双方权利和义务的协议。B、C、D表述均不完整。", "kpoint": "劳动法与职业道德", "hot": 5, "id": 5, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "偏差是(        )。", "options": [{"label": "A", "text": "绝对值"}, {"label": "B", "text": "正值"}, {"label": "C", "text": "负值"}, {"label": "D", "text": "代数值"}], "answer": "D", "explain": "偏差等于实际尺寸减公称尺寸，是带正负号的代数值。A绝对值、B正值、C负值均不全面。", "kpoint": "公差与配合", "hot": 4, "id": 6, "chapter": "公差与配合"}, {"type": "single", "question": "假想用剖切面将机件的某处切断，仅画出其断面的图形，称为(        )。", "options": [{"label": "A", "text": "基本视图"}, {"label": "B", "text": "剖视图"}, {"label": "C", "text": "全剖视图"}, {"label": "D", "text": "断面图"}], "answer": "D", "explain": "假想用剖切面将机件某处切断、仅画出断面形状的图形称为断面图。A基本视图是完整投影视图；B、C剖视图还要画出剖切面后的可见部分。", "kpoint": "剖视图与断面", "hot": 4, "id": 7, "chapter": "剖视图与断面"}, {"type": "single", "question": "CAD软件中我们一般都用(        )单位来做图以达到最佳的效果。", "options": [{"label": "A", "text": "米"}, {"label": "B", "text": "厘米"}, {"label": "C", "text": "毫米"}, {"label": "D", "text": "分米"}], "answer": "C", "explain": "我国机械制图标准以毫米为单位，CAD中一般用毫米作图以保证精度。A、B、D单位过大易产生精度问题。", "kpoint": "AutoCAD", "hot": 3, "id": 8, "chapter": "AutoCAD"}, {"type": "single", "question": "以回转面为某方向的轮廓时，一般不标注该方向的(        )尺寸。", "options": [{"label": "A", "text": "总体"}, {"label": "B", "text": "定位"}, {"label": "C", "text": "定形"}, {"label": "D", "text": "个体"}], "answer": "A", "explain": "回转体的总体尺寸已由直径和长度确定，一般不标注其轴向总体尺寸，避免重复。B定位、C定形尺寸需要标注；D无此分类。", "kpoint": "尺寸标注", "hot": 3, "id": 9, "chapter": "尺寸标注"}, {"type": "single", "question": "用(        )法画组合体的正等轴测剖视图，可先画出其完整的正等轴测图。", "options": [{"label": "A", "text": "换面"}, {"label": "B", "text": "旋转"}, {"label": "C", "text": "中心投影"}, {"label": "D", "text": "先画外形再作剖视"}], "answer": "D", "explain": "画组合体正等轴测剖视图，可先画出完整外形再做剖视。A换面法、B旋转法用于投影变换；C中心投影用于透视图。", "kpoint": "轴测图", "hot": 3, "id": 10, "chapter": "轴测图"}, {"type": "single", "question": "半剖视图中，半个视图与半个剖视图的分界线用(        )。", "options": [{"label": "A", "text": "粗实线"}, {"label": "B", "text": "细点画线"}, {"label": "C", "text": "细虚线"}, {"label": "D", "text": "波浪线"}], "answer": "B", "explain": "半剖视图中半个视图与半个剖视图的分界线用细点画线（对称中心线）。A粗实线用于可见轮廓；C细虚线用于不可见轮廓；D波浪线用于局部剖。", "kpoint": "剖视图与断面", "hot": 5, "id": 11, "chapter": "剖视图与断面"}, {"type": "single", "question": "由投射光线与轴测投影面的位置关系确定，轴测投影分为(        )。", "options": [{"label": "A", "text": "任意类"}, {"label": "B", "text": "三类"}, {"label": "C", "text": "一类"}, {"label": "D", "text": "二类"}], "answer": "D", "explain": "按投射光线与轴测投影面的位置关系，轴测投影分为正轴测投影和斜轴测投影两类。A、B、C均不对。", "kpoint": "轴测图", "hot": 3, "id": 12, "chapter": "轴测图"}, {"type": "single", "question": "下面哪一项不可以被分解:(        )", "options": [{"label": "A", "text": "关联尺寸"}, {"label": "B", "text": "多线段"}, {"label": "C", "text": "块参照"}, {"label": "D", "text": "用 MINSERT 命令插入的块参照"}], "answer": "D", "explain": "用MINSERT命令插入的块参照不能被分解。A关联尺寸、B多段线、C块参照均可分解。", "kpoint": "AutoCAD", "hot": 2, "id": 13, "chapter": "AutoCAD"}, {"type": "single", "question": "移出断面图画在视图的(        )。", "options": [{"label": "A", "text": "上方"}, {"label": "B", "text": "下方"}, {"label": "C", "text": "里面"}, {"label": "D", "text": "外面"}], "answer": "D", "explain": "移出断面图画在视图的外面（轮廓之外）。A上方、B下方、C里面均错误。", "kpoint": "剖视图与断面", "hot": 4, "id": 14, "chapter": "剖视图与断面"}, {"type": "single", "question": "下面关于基本视图的投影规律，说法正确的是(        )。", "options": [{"label": "A", "text": "主俯后仰高平齐"}, {"label": "B", "text": "主俯后右高平齐"}, {"label": "C", "text": "俯左后仰宽相等"}, {"label": "D", "text": "主俯后仰长对正"}], "answer": "D", "explain": "基本视图投影规律：主、俯、后、仰视图长对正；主、左、后、右视图高平齐；俯、左、仰、右视图宽相等。A、B、C搭配错误。", "kpoint": "投影与三视图", "hot": 5, "id": 15, "chapter": "投影与三视图"}, {"type": "single", "question": "我国处理劳动争议的程序通常为(        )。", "options": [{"label": "A", "text": "协商、调解、仲裁和诉讼"}, {"label": "B", "text": "诉讼、调解、仲裁和协商"}, {"label": "C", "text": "协商、诉讼、仲裁和调解"}, {"label": "D", "text": "协商、调解、诉讼和仲裁"}], "answer": "A", "explain": "我国处理劳动争议的程序通常为协商、调解、仲裁和诉讼。B、C、D顺序错误。", "kpoint": "劳动法与职业道德", "hot": 5, "id": 16, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "在斜轴测投影中，投影线与(        )是倾斜的。", "options": [{"label": "A", "text": "画面"}, {"label": "B", "text": "物体"}, {"label": "C", "text": "坐标轴"}, {"label": "D", "text": "轴测投影面"}], "answer": "D", "explain": "斜轴测投影中，投影线与轴测投影面是倾斜的。A画面、B物体、C坐标轴均不对。", "kpoint": "轴测图", "hot": 3, "id": 17, "chapter": "轴测图"}, {"type": "single", "question": "形位公差的框格用细实线绘制，框格高度为字高的2倍，长度(        )。", "options": [{"label": "A", "text": "为字体的4倍"}, {"label": "B", "text": "为字体的6倍"}, {"label": "C", "text": "为字体的8倍"}, {"label": "D", "text": "可根据需要画出"}], "answer": "D", "explain": "形位公差框格用细实线绘制，高度为字高的2倍，长度可根据标注内容需要确定。A、B、C的固定倍数均错误。", "kpoint": "公差与配合", "hot": 2, "id": 18, "chapter": "公差与配合"}, {"type": "single", "question": "将绘制的图形保存为样板文件的文件名为(        )。", "options": [{"label": "A", "text": "*.dwg"}, {"label": "B", "text": "*.dxf"}, {"label": "C", "text": "*.dwt"}, {"label": "D", "text": "*.dwf"}], "answer": "C", "explain": "样板文件的后缀为*.dwt。A.dwg为图形文件；B.dxf为图形交换文件；D.dwf为发布文件。", "kpoint": "AutoCAD", "hot": 3, "id": 19, "chapter": "AutoCAD"}, {"type": "single", "question": "道德是指依靠(        )、传统习惯、教育示范和内心信念来维持的社会实践活动。", "options": [{"label": "A", "text": "国家法律"}, {"label": "B", "text": "宪法"}, {"label": "C", "text": "社会舆论"}, {"label": "D", "text": "党的领导"}], "answer": "C", "explain": "道德依靠社会舆论、传统习惯、教育示范和内心信念来维持。A、B是依靠国家强制力的法律；D与道德维持方式无关。", "kpoint": "劳动法与职业道德", "hot": 4, "id": 20, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "单个圆柱齿轮的齿顶圆和齿顶线用(        )绘制。", "options": [{"label": "A", "text": "粗实线"}, {"label": "B", "text": "细实线"}, {"label": "C", "text": "粗点画线"}, {"label": "D", "text": "细点画线"}], "answer": "A", "explain": "单个圆柱齿轮的齿顶圆和齿顶线用粗实线绘制。B细实线用于齿根圆；C、D点画线用于分度圆和分度线。", "kpoint": "螺纹与齿轮", "hot": 4, "id": 21, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "当直线与投影面垂直时，直线的投影反映(        )。", "options": [{"label": "A", "text": "积聚性"}, {"label": "B", "text": "收缩性"}, {"label": "C", "text": "真实性"}, {"label": "D", "text": "放大性"}], "answer": "A", "explain": "直线垂直于投影面时投影积聚为一点，反映积聚性。B收缩性对应一般位置线；C真实性对应平行线；D无放大性。", "kpoint": "投影与三视图", "hot": 4, "id": 22, "chapter": "投影与三视图"}, {"type": "single", "question": "斜二测的轴间角分别为(        )。", "options": [{"label": "A", "text": "97°、131°、132°"}, {"label": "B", "text": "120°、120°、120°"}, {"label": "C", "text": "90°、135°、135°"}, {"label": "D", "text": "45°、110°、205°"}], "answer": "C", "explain": "斜二测的轴间角为90°、135°、135°。A、B、D均不符合国家标准规定。", "kpoint": "轴测图", "hot": 3, "id": 23, "chapter": "轴测图"}, {"type": "single", "question": "六个基本视图中右视图反映物体的上、下、前、后(        )。", "options": [{"label": "A", "text": "投影"}, {"label": "B", "text": "投影规律"}, {"label": "C", "text": "视图"}, {"label": "D", "text": "方位"}], "answer": "D", "explain": "右视图反映物体的上下和前后方位。A、B、C表述均错误。", "kpoint": "投影与三视图", "hot": 4, "id": 24, "chapter": "投影与三视图"}, {"type": "single", "question": "截面与锥轴平行时截交线的形状是(        )。", "options": [{"label": "A", "text": "圆"}, {"label": "B", "text": "矩形"}, {"label": "C", "text": "椭圆"}, {"label": "D", "text": "双曲线"}], "answer": "D", "explain": "截平面平行于圆锥轴线（不过锥顶）时截交线为双曲线。A圆为截面垂直于轴线所得；B矩形错误；C椭圆为截面倾斜于轴线所得。", "kpoint": "截交线与相贯线", "hot": 4, "id": 25, "chapter": "截交线与相贯线"}, {"type": "single", "question": "画螺柱连接装配图时，螺柱旋入机体一端的螺纹，必须画成(        )的形式。", "options": [{"label": "A", "text": "全部旋入螺母内"}, {"label": "B", "text": "部分旋入螺母内"}, {"label": "C", "text": "全部旋入螺孔内"}, {"label": "D", "text": "部分旋入螺孔内"}], "answer": "C", "explain": "螺柱连接装配图中，旋入机体一端的螺纹必须全部旋入螺孔内，保证连接可靠。A、B\"旋入螺母\"说法错误；D部分旋入不符合规定。", "kpoint": "螺纹与齿轮", "hot": 3, "id": 26, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "劳动合同订立时(        )发生重大变化，致使原劳动合同无法履行，经当事人协商不能就变更劳动合同达成协议的，用人单位可以解除劳动合同，但是应当提前三十日以书面形式通知劳动者本人。", "options": [{"label": "A", "text": "所依据的客观条件"}, {"label": "B", "text": "所依据的主观情况"}, {"label": "C", "text": "所在单位领导班子"}, {"label": "D", "text": "所在单位主要领导"}], "answer": "A", "explain": "《劳动合同法》规定劳动合同订立时所依据的客观情况发生重大变化致合同无法履行、协商不成时，用人单位可提前三十日书面通知解除。B、C、D错误。", "kpoint": "劳动法与职业道德", "hot": 4, "id": 27, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "尺寸标注，除定形、定位尺寸外，还应注明长、宽、高(        )个方向的总体尺寸。", "options": [{"label": "A", "text": "1"}, {"label": "B", "text": "2"}, {"label": "C", "text": "3"}, {"label": "D", "text": "4"}], "answer": "C", "explain": "尺寸标注除定形、定位尺寸外，还应标注长、宽、高三个方向的总体尺寸。A、B、D错误。", "kpoint": "尺寸标注", "hot": 3, "id": 28, "chapter": "尺寸标注"}, {"type": "single", "question": "按制图标准规定，表示斜视图名称的大写(        )应靠近旋转符号的箭头端。", "options": [{"label": "A", "text": "英文字母"}, {"label": "B", "text": "拉丁字母"}, {"label": "C", "text": "欧拉字母"}, {"label": "D", "text": "拼音字母"}], "answer": "B", "explain": "表示斜视图名称的大写拉丁字母应靠近旋转符号的箭头端。A英文字母、C欧拉字母、D拼音字母表述均不准确。", "kpoint": "剖视图与断面", "hot": 2, "id": 29, "chapter": "剖视图与断面"}, {"type": "single", "question": "画正六棱柱的正等轴测图，一般先画出(        )。", "options": [{"label": "A", "text": "侧面"}, {"label": "B", "text": "顶面"}, {"label": "C", "text": "底面"}, {"label": "D", "text": "高"}], "answer": "B", "explain": "画正六棱柱的正等轴测图，一般先画顶面，再向下画侧棱。A侧面、C底面、D高顺序不对。", "kpoint": "轴测图", "hot": 3, "id": 30, "chapter": "轴测图"}, {"type": "single", "question": "(        )的基本要求是画图速度要快、目测比例要准、图面质量要好。", "options": [{"label": "A", "text": "微机绘图"}, {"label": "B", "text": "徒手绘图"}, {"label": "C", "text": "仪器绘图"}, {"label": "D", "text": "绘制清图"}], "answer": "B", "explain": "徒手绘图的基本要求是画图速度快、目测比例准、图面质量好。A微机绘图、C仪器绘图、D绘制清图均不符。", "kpoint": "制图工具与规范", "hot": 3, "id": 31, "chapter": "制图工具与规范"}, {"type": "single", "question": "平面与球相交，且平面平行于V面时，截交线的正面投影为(        )。", "options": [{"label": "A", "text": "直线"}, {"label": "B", "text": "圆"}, {"label": "C", "text": "椭圆"}, {"label": "D", "text": "半圆"}], "answer": "B", "explain": "截平面平行于V面截球时，截交线的正面投影为圆（反映实形）。A直线、C椭圆、D半圆错误。", "kpoint": "截交线与相贯线", "hot": 4, "id": 32, "chapter": "截交线与相贯线"}, {"type": "single", "question": "国家标准规定了公差带由标准公差和基本偏差两个要素组成。标准公差确定(        )，基本偏差确定公差带位置。", "options": [{"label": "A", "text": "公差数值"}, {"label": "B", "text": "公差等级"}, {"label": "C", "text": "公差带长短"}, {"label": "D", "text": "公差带大小"}], "answer": "D", "explain": "公差带由标准公差和基本偏差两要素组成：标准公差确定公差带大小，基本偏差确定公差带位置。A、B、C表述不准确。", "kpoint": "公差与配合", "hot": 4, "id": 33, "chapter": "公差与配合"}, {"type": "single", "question": "在剖视图中,机件上的肋、轮辐、薄壁等，如按纵向剖切，这些结构都不画剖面符号，而用(        )将他们与其邻接部分分开。", "options": [{"label": "A", "text": "粗实线"}, {"label": "B", "text": "细实线"}, {"label": "C", "text": "虚线"}, {"label": "D", "text": "点划线"}], "answer": "A", "explain": "肋、轮辐、薄壁按纵向剖切时不画剖面符号，用粗实线与其邻接部分分开。B细实线、C虚线、D点划线均错误。", "kpoint": "剖视图与断面", "hot": 4, "id": 34, "chapter": "剖视图与断面"}, {"type": "single", "question": "下列属于组合体组合形式的是(        )", "options": [{"label": "A", "text": "相错"}, {"label": "B", "text": "平齐"}, {"label": "C", "text": "水平线"}, {"label": "D", "text": "一般位置线"}], "answer": "D", "explain": "按题库答案，一般位置线属于组合体的组合形式之一。A相错、B平齐、C水平线均为线面位置关系，不属于组合形式。", "kpoint": "投影与三视图", "hot": 3, "id": 35, "chapter": "投影与三视图"}, {"type": "single", "question": "细实线的主要用途不包括(        )。", "options": [{"label": "A", "text": "尺寸线、尺寸界线"}, {"label": "B", "text": "断裂处边界线"}, {"label": "C", "text": "螺纹牙底线"}, {"label": "D", "text": "过渡线"}], "answer": "B", "explain": "断裂处边界线用波浪线或双折线，不属于细实线用途。A尺寸线尺寸界线、C螺纹牙底线、D过渡线均用细实线。", "kpoint": "图线", "hot": 4, "id": 36, "chapter": "图线"}, {"type": "single", "question": "劳动者在试用期内提前(        )通知用人单位，可以解除劳动合同。", "options": [{"label": "A", "text": "十五日"}, {"label": "B", "text": "十日"}, {"label": "C", "text": "七日"}, {"label": "D", "text": "三日"}], "answer": "D", "explain": "劳动者在试用期内提前三日通知用人单位，即可解除劳动合同。A十五日、B十日、C七日均错误。", "kpoint": "劳动法与职业道德", "hot": 3, "id": 37, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "画图时，铅笔在前后方向应与纸面垂直，而且向画线(        )方向倾斜约30°。", "options": [{"label": "A", "text": "前进"}, {"label": "B", "text": "后退"}, {"label": "C", "text": "相反"}, {"label": "D", "text": "尺寸界线"}], "answer": "A", "explain": "画图时铅笔前后方向应与纸面垂直，并向画线前进方向倾斜约30°。B后退、C相反、D尺寸界线均错误。", "kpoint": "制图工具与规范", "hot": 2, "id": 38, "chapter": "制图工具与规范"}, {"type": "single", "question": "画整体轴测装配图，相邻两零件被遮挡部分线条(        )画出。", "options": [{"label": "A", "text": "虚线"}, {"label": "B", "text": "用双点画线"}, {"label": "C", "text": "用剖切面"}, {"label": "D", "text": "不必"}], "answer": "D", "explain": "整体轴测装配图中，相邻两零件被遮挡部分的线条不必画出。A虚线、B双点画线、C剖切面均错误。", "kpoint": "轴测图", "hot": 3, "id": 39, "chapter": "轴测图"}, {"type": "single", "question": "在剖视图中，当剖切平面通过两啮合齿轮轴线时，在(        )，将一个齿轮的轮齿用粗实线绘制，另一个齿轮的轮齿被遮挡的部分用虚线绘制。", "options": [{"label": "A", "text": "啮合区内"}, {"label": "B", "text": "啮合区外"}, {"label": "C", "text": "两齿轮内"}, {"label": "D", "text": "两齿轮外"}], "answer": "A", "explain": "剖切平面通过两啮合齿轮轴线时，在啮合区内一个齿轮轮齿用粗实线绘制，另一齿轮被遮挡的轮齿用虚线绘制。B、C、D位置表述错误。", "kpoint": "螺纹与齿轮", "hot": 4, "id": 40, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "(        )是一种移位配置的基本视图。", "options": [{"label": "A", "text": "三视图"}, {"label": "B", "text": "斜视图"}, {"label": "C", "text": "剖面图"}, {"label": "D", "text": "向视图"}], "answer": "D", "explain": "向视图是一种移位配置的基本视图，需标注投射方向和名称。A三视图、B斜视图、C剖面图均不对。", "kpoint": "剖视图与断面", "hot": 3, "id": 41, "chapter": "剖视图与断面"}, {"type": "single", "question": "表示各基本几何体大小(长、宽、高)的尺寸是(        )。", "options": [{"label": "A", "text": "定形尺寸"}, {"label": "B", "text": "定位尺寸"}, {"label": "C", "text": "总体尺寸"}, {"label": "D", "text": "规格尺寸"}], "answer": "A", "explain": "定形尺寸表示各基本几何体自身的大小（长、宽、高）。B定位尺寸确定相对位置；C总体尺寸为总长宽高；D规格尺寸无此术语。", "kpoint": "尺寸标注", "hot": 4, "id": 42, "chapter": "尺寸标注"}, {"type": "single", "question": "用圆规画大圆时，可用(        )扩大所画圆的半径，使针脚和铅笔脚均与纸面保持垂直。", "options": [{"label": "A", "text": "曲线板"}, {"label": "B", "text": "丁字尺"}, {"label": "C", "text": "加长杆"}, {"label": "D", "text": "绘图笔"}], "answer": "C", "explain": "用圆规画大圆时，可用加长杆扩大所画圆的半径。A曲线板、B丁字尺、D绘图笔均不能扩大圆规半径。", "kpoint": "制图工具与规范", "hot": 2, "id": 43, "chapter": "制图工具与规范"}, {"type": "single", "question": "局部视图的(        )一般是用波浪线表示。", "options": [{"label": "A", "text": "轮廓线"}, {"label": "B", "text": "断裂边界线"}, {"label": "C", "text": "剖面线"}, {"label": "D", "text": "边界"}], "answer": "B", "explain": "局部视图的断裂边界线一般用波浪线表示。A轮廓线、C剖面线、D边界均错误。", "kpoint": "剖视图与断面", "hot": 3, "id": 44, "chapter": "剖视图与断面"}, {"type": "single", "question": "(        )是劳动者与用人单位确定劳动关系、明确双方权利和义务的协议。", "options": [{"label": "A", "text": "技术转让合同"}, {"label": "B", "text": "劳动合同"}, {"label": "C", "text": "科研合同"}, {"label": "D", "text": "技术服务合同"}], "answer": "B", "explain": "劳动合同是劳动者与用人单位确定劳动关系、明确双方权利和义务的协议。A技术转让合同、C科研合同、D技术服务合同均不涉及劳动关系。", "kpoint": "劳动法与职业道德", "hot": 4, "id": 45, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "徒手绘图常用于设计初始反复比较方案，现场测绘，(        )等场合。", "options": [{"label": "A", "text": "大会发言或介绍情况"}, {"label": "B", "text": "文件复制或邮寄交流"}, {"label": "C", "text": "参观学习或交流讨论"}, {"label": "D", "text": "工作总结或交流经验"}], "answer": "C", "explain": "徒手绘图常用于设计初始反复比较方案、现场测绘、参观学习或交流讨论等场合。A、B、D场合不需要徒手绘图。", "kpoint": "制图工具与规范", "hot": 2, "id": 46, "chapter": "制图工具与规范"}, {"type": "single", "question": "下面关于创建新布局的方法中错误的是(        )。", "options": [{"label": "A", "text": "使用“布局向导(LAYOUTWIZARD) ” 命令循序渐进地创建一个新布局。"}, {"label": "B", "text": "使用“来自样板的布局(LAYOUT) ” 命令插入基于现有布局样板的新布局。"}, {"label": "C", "text": "通过布局选项卡创建一个新布局。"}, {"label": "D", "text": "运行“EXPORT” 命令。"}], "answer": "D", "explain": "EXPORT命令用于导出文件，不能创建新布局。A布局向导、B来自样板的布局、C布局选项卡均可创建新布局。", "kpoint": "AutoCAD", "hot": 2, "id": 47, "chapter": "AutoCAD"}, {"type": "single", "question": "局部视图是(        )的基本视图。", "options": [{"label": "A", "text": "完整"}, {"label": "B", "text": "不完整"}, {"label": "C", "text": "某一方向"}, {"label": "D", "text": "某个面"}], "answer": "B", "explain": "局部视图是不完整的基本视图，只画所需表达的部分。A完整、C某一方向、D某个面表述均错误。", "kpoint": "剖视图与断面", "hot": 3, "id": 48, "chapter": "剖视图与断面"}, {"type": "single", "question": "尺寸界线一般应与尺寸线垂直，并超出尺寸线的终端(        )。", "options": [{"label": "A", "text": "1~2mm"}, {"label": "B", "text": "2~3mm"}, {"label": "C", "text": "3~4mm"}, {"label": "D", "text": "4~5mm"}], "answer": "B", "explain": "尺寸界线一般应与尺寸线垂直，并超出尺寸线终端2~3mm。A、C、D数值错误。", "kpoint": "尺寸标注", "hot": 3, "id": 49, "chapter": "尺寸标注"}, {"type": "single", "question": "用圆弧连接两已知圆弧的种类包括(        )。", "options": [{"label": "A", "text": "内连接两已知圆弧和外连接两已知圆弧"}, {"label": "B", "text": "外连接两已知圆弧"}, {"label": "C", "text": "内外连接两已知圆弧"}, {"label": "D", "text": "内连接两已知圆弧"}], "answer": "A", "explain": "圆弧连接两已知圆弧包括内连接和外连接两种。B、C、D均不完整。", "kpoint": "制图工具与规范", "hot": 3, "id": 50, "chapter": "制图工具与规范"}, {"type": "single", "question": "尺寸线终端形式有箭头和(        )两种形式。", "options": [{"label": "A", "text": "圆点"}, {"label": "B", "text": "圆圈"}, {"label": "C", "text": "直线"}, {"label": "D", "text": "斜线"}], "answer": "D", "explain": "尺寸线终端有箭头和斜线两种形式。A圆点、B圆圈、C直线均错误。", "kpoint": "尺寸标注", "hot": 4, "id": 51, "chapter": "尺寸标注"}, {"type": "single", "question": "某标准件的标记为“螺钉GB/T67M8×20”，其中20的含义是(        )为20mm。", "options": [{"label": "A", "text": "公称直径"}, {"label": "B", "text": "螺纹中径"}, {"label": "C", "text": "公称长度"}, {"label": "D", "text": "钉头直径"}], "answer": "C", "explain": "螺钉标记M8×20中，20表示公称长度为20mm。A公称直径为8；B螺纹中径、D钉头直径均错误。", "kpoint": "螺纹与齿轮", "hot": 4, "id": 52, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "绘制轴测图时，必须沿(        )测量尺寸。", "options": [{"label": "A", "text": "水平方向"}, {"label": "B", "text": "铅垂方向"}, {"label": "C", "text": "轴向"}, {"label": "D", "text": "径向"}], "answer": "C", "explain": "绘制轴测图时，必须沿轴测轴方向测量尺寸（沿轴测量）。A水平、B铅垂、D径向均错误。", "kpoint": "轴测图", "hot": 4, "id": 53, "chapter": "轴测图"}, {"type": "single", "question": "画支架的正等轴测图，首先在(        )上画出坐标轴。", "options": [{"label": "A", "text": "轴测图"}, {"label": "B", "text": "投影图"}, {"label": "C", "text": "剖视图"}, {"label": "D", "text": "透视图"}], "answer": "B", "explain": "画支架的正等轴测图，首先在投影图上画出坐标轴。A轴测图、C剖视图、D透视图均不对。", "kpoint": "轴测图", "hot": 2, "id": 54, "chapter": "轴测图"}, {"type": "single", "question": "四心圆法画椭圆，是一种(        )作图法", "options": [{"label": "A", "text": "近似"}, {"label": "B", "text": "较近似"}, {"label": "C", "text": "精确"}, {"label": "D", "text": "较精确"}], "answer": "A", "explain": "四心圆法画椭圆是一种近似作图法。B较近似、C精确、D较精确表述均不准确。", "kpoint": "轴测图", "hot": 3, "id": 55, "chapter": "轴测图"}, {"type": "single", "question": "强化职业责任是(        )职业道德规范的具体要求。", "options": [{"label": "A", "text": "团结协作"}, {"label": "B", "text": "诚实守信"}, {"label": "C", "text": "勤劳节俭"}, {"label": "D", "text": "爱岗敬业"}], "answer": "D", "explain": "强化职业责任是爱岗敬业职业道德规范的具体要求。A团结协作、B诚实守信、C勤劳节俭各对应其他规范要求。", "kpoint": "劳动法与职业道德", "hot": 3, "id": 56, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "在装配图中，对于薄片零件或微小间隙，无法按其实际尺寸画出，或图线密集难以区分时，可采用(        )", "options": [{"label": "A", "text": "夸大画法"}, {"label": "B", "text": "假想画法"}, {"label": "C", "text": "展开画法"}, {"label": "D", "text": "简化画法"}], "answer": "D", "explain": "装配图中薄片零件或微小间隙无法按实际尺寸画出、图线密集时，可采用简化画法。A夸大画法、B假想画法、C展开画法用于其他情形。", "kpoint": "零件图与装配图", "hot": 4, "id": 57, "chapter": "零件图与装配图"}, {"type": "single", "question": "工程上描述物体的形状采用的是(        )。", "options": [{"label": "A", "text": "正投影"}, {"label": "B", "text": "斜投影"}, {"label": "C", "text": "平行投影"}, {"label": "D", "text": "以上3种都用"}], "answer": "A", "explain": "工程上描述物体形状采用的是正投影法，投影线垂直于投影面、度量性好。B斜投影、C平行投影不全面；D错误。", "kpoint": "投影与三视图", "hot": 4, "id": 58, "chapter": "投影与三视图"}, {"type": "single", "question": "形位公差中垂直度位置公差的符号画法是(        )。", "options": [{"label": "A", "text": "“∥”"}, {"label": "B", "text": "“∠”"}, {"label": "C", "text": "“∟”"}, {"label": "D", "text": "“⊥”"}], "answer": "D", "explain": "垂直度位置公差的符号画法是\"⊥\"。A\"∥\"为平行度；B、C无此公差符号。", "kpoint": "公差与配合", "hot": 4, "id": 59, "chapter": "公差与配合"}, {"type": "single", "question": "属于形状公差的有(        )。", "options": [{"label": "A", "text": "同轴度"}, {"label": "B", "text": "圆柱度"}, {"label": "C", "text": "圆跳动"}, {"label": "D", "text": "平行度"}], "answer": "B", "explain": "圆柱度属于形状公差。A同轴度、C圆跳动、D平行度均为位置公差。", "kpoint": "公差与配合", "hot": 4, "id": 60, "chapter": "公差与配合"}, {"type": "single", "question": "当标注(        )尺寸时，尺寸线必须与所注的线段平行。", "options": [{"label": "A", "text": "角度"}, {"label": "B", "text": "线性"}, {"label": "C", "text": "直径"}, {"label": "D", "text": "半径"}], "answer": "B", "explain": "标注线性尺寸时，尺寸线必须与所注线段平行。A角度尺寸线为圆弧；C直径、D半径尺寸线通过圆心。", "kpoint": "尺寸标注", "hot": 3, "id": 61, "chapter": "尺寸标注"}, {"type": "single", "question": "关于图纸的标题栏在图框中的位置，下列叙述正确的是(        )。", "options": [{"label": "A", "text": "配置在任意位置"}, {"label": "B", "text": "配置在右下角"}, {"label": "C", "text": "配置在左下角"}, {"label": "D", "text": "配置在图中央"}], "answer": "B", "explain": "图纸的标题栏应配置在图框的右下角。A任意位置、C左下角、D图中央均错误。", "kpoint": "制图工具与规范", "hot": 4, "id": 62, "chapter": "制图工具与规范"}, {"type": "single", "question": "AutoCAD中CAD标准文件后缀名为:(        )", "options": [{"label": "A", "text": "dwg"}, {"label": "B", "text": "dxf"}, {"label": "C", "text": "dwt"}, {"label": "D", "text": "dws"}], "answer": "A", "explain": "按题库答案，CAD标准文件后缀名为.dwg（图形文件）。B.dxf为交换文件；C.dwt为样板文件；D.dws为标准检查文件。", "kpoint": "AutoCAD", "hot": 2, "id": 63, "chapter": "AutoCAD"}, {"type": "single", "question": "螺纹的基本要素有(        )。", "options": [{"label": "A", "text": "牙型、螺纹大径、螺距、线数和旋向"}, {"label": "B", "text": "牙型、螺纹直径、螺距、线数和旋向"}, {"label": "C", "text": "牙型、螺纹大径、导程、线数和旋向"}, {"label": "D", "text": "类型、螺纹直径、导程、线数和牙型角"}], "answer": "B", "explain": "螺纹的基本要素有牙型、螺纹直径、螺距、线数和旋向。A大径代替直径不全面；C、D含导程、牙型角等非要素项。", "kpoint": "螺纹与齿轮", "hot": 5, "id": 64, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "一般位置直线在三个投影面上的投影具有(        )", "options": [{"label": "A", "text": "真实性"}, {"label": "B", "text": "积聚性"}, {"label": "C", "text": "扩大性"}, {"label": "D", "text": "收缩性"}], "answer": "D", "explain": "一般位置直线在三个投影面上的投影均为缩短的直线，具有收缩性。A真实性对应平行线；B积聚性对应垂直线；C无扩大性。", "kpoint": "投影与三视图", "hot": 4, "id": 65, "chapter": "投影与三视图"}, {"type": "single", "question": "在AutoCAD中给一个对象指定颜色的方法很多，除了:(        )", "options": [{"label": "A", "text": "直接指定颜色特性"}, {"label": "B", "text": "随层“ByLayer”"}, {"label": "C", "text": "随块“ByBlock”"}, {"label": "D", "text": "随机颜色"}], "answer": "D", "explain": "AutoCAD中给对象指定颜色的方法有直接指定、随层ByLayer、随块ByBlock。D随机颜色不是指定颜色的方法。", "kpoint": "AutoCAD", "hot": 2, "id": 66, "chapter": "AutoCAD"}, {"type": "single", "question": "5︰1为(        )比例。", "options": [{"label": "A", "text": "原值比例"}, {"label": "B", "text": "放大比例"}, {"label": "C", "text": "缩小比例"}, {"label": "D", "text": "没有比例"}], "answer": "B", "explain": "5:1为放大比例（比值大于1）。A原值比例为1:1；C缩小比例比值小于1；D错误。", "kpoint": "比例", "hot": 4, "id": 67, "chapter": "比例"}, {"type": "single", "question": "点画线与虚线相交时，应使(        )相交。", "options": [{"label": "A", "text": "线段与线段"}, {"label": "B", "text": "间隙与间隙"}, {"label": "C", "text": "线段与间隙"}, {"label": "D", "text": "间隙与线段"}], "answer": "A", "explain": "点画线与虚线相交时，应在线段与线段处相交。B间隙与间隙、C线段与间隙、D间隙与线段均错误。", "kpoint": "图线", "hot": 3, "id": 68, "chapter": "图线"}, {"type": "single", "question": "公差等级确定尺寸的精确程度，公称尺寸≦500mm的公差等级共分为(        )级。", "options": [{"label": "A", "text": "8"}, {"label": "B", "text": "18"}, {"label": "C", "text": "20"}, {"label": "D", "text": "28"}], "answer": "C", "explain": "公称尺寸≤500mm时，公差等级共分为20个等级（IT01～IT18）。A、B、D错误。", "kpoint": "公差与配合", "hot": 3, "id": 69, "chapter": "公差与配合"}, {"type": "single", "question": "根据机件的轴测图画视图的步骤是:形体分析、选择视图、(        )、画视图底稿。", "options": [{"label": "A", "text": "定比例，选图幅"}, {"label": "B", "text": "画定位线"}, {"label": "C", "text": "画轮廓线"}, {"label": "D", "text": "画剖视图"}], "answer": "A", "explain": "根据机件的轴测图画视图的步骤是：形体分析、选择视图、定比例选图幅、画视图底稿。B、C、D顺序错误。", "kpoint": "投影与三视图", "hot": 3, "id": 70, "chapter": "投影与三视图"}, {"type": "single", "question": "画组合体的正等轴测图，按位置关系，逐一画出(        )的正等轴测图。", "options": [{"label": "A", "text": "截交线"}, {"label": "B", "text": "圆"}, {"label": "C", "text": "棱柱"}, {"label": "D", "text": "各基本体"}], "answer": "D", "explain": "画组合体的正等轴测图，应按位置关系逐一画出各基本体的正等轴测图。A截交线、B圆、C棱柱均不全面。", "kpoint": "轴测图", "hot": 3, "id": 71, "chapter": "轴测图"}, {"type": "single", "question": "职业道德是制图员自我完善的(        )。", "options": [{"label": "A", "text": "重要条件"}, {"label": "B", "text": "充分条件"}, {"label": "C", "text": "先决条件"}, {"label": "D", "text": "必要条件"}], "answer": "D", "explain": "职业道德是制图员自我完善的必要条件。A重要条件、B充分条件、C先决条件表述均不准确。", "kpoint": "劳动法与职业道德", "hot": 3, "id": 72, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "在制图员比较集中的部位，制图技师有责任协助事业单位的领导和制图员一起学习的方针政策，(        )，学习制图员的职业道德和职业守则，学习企事业单位的有关规定。", "options": [{"label": "A", "text": "学习制图标准的相关知识"}, {"label": "B", "text": "学习国家的法律法规"}, {"label": "C", "text": "学习绘图工具的使用方法"}, {"label": "D", "text": "学习图样的表达方法"}], "answer": "B", "explain": "制图技师有责任协助领导和制图员学习国家的法律法规、职业道德和职业守则等。A、C、D不属于方针政策学习范畴。", "kpoint": "劳动法与职业道德", "hot": 2, "id": 73, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "在“视图”对话框中，“命名视图”项卡上，如果一命名视图的VP信息有“√”标记表明:(        )", "options": [{"label": "A", "text": "该命名视图级别最高"}, {"label": "B", "text": "该命名视图与图纸集中的图纸上的视口相关联"}, {"label": "C", "text": "该命名视图是当前命名视图"}, {"label": "D", "text": "该命名视图与图纸集“资源图形” 选项卡相关联"}], "answer": "B", "explain": "命名视图VP信息有\"√\"标记，表明该命名视图与图纸集中的图纸上的视口相关联。A、C、D均错误。", "kpoint": "AutoCAD", "hot": 2, "id": 74, "chapter": "AutoCAD"}, {"type": "single", "question": "形位公差中基准符号由基准字母、圆圈、(        )和连线组成。", "options": [{"label": "A", "text": "细的短横线"}, {"label": "B", "text": "粗的短横线"}, {"label": "C", "text": "细的长横线"}, {"label": "D", "text": "粗的长横线"}], "answer": "B", "explain": "基准符号由基准字母、圆圈、粗的短横线和连线组成。A细短横线、C细长横线、D粗长横线均错误。", "kpoint": "公差与配合", "hot": 4, "id": 75, "chapter": "公差与配合"}, {"type": "single", "question": "能反映出物体前后左右方位的视图是(        )。", "options": [{"label": "A", "text": "左视图"}, {"label": "B", "text": "俯视图"}, {"label": "C", "text": "主视图"}, {"label": "D", "text": "后视图"}], "answer": "B", "explain": "俯视图能反映物体的前后左右方位。A左视图反映上下前后；C主视图反映上下左右；D后视图反映上下左右（左右相反）。", "kpoint": "投影与三视图", "hot": 4, "id": 76, "chapter": "投影与三视图"}, {"type": "single", "question": "间隙配合是指(        )。", "options": [{"label": "A", "text": "孔和轴的公差小于零"}, {"label": "B", "text": "孔和轴的公差相互交错"}, {"label": "C", "text": "孔的公差带在轴的公差带之下"}, {"label": "D", "text": "孔的公差带在轴的公差带之上"}], "answer": "D", "explain": "间隙配合是指孔的公差带在轴的公差带之上，始终存在间隙。A、C对应过盈配合；B对应过渡配合。", "kpoint": "公差与配合", "hot": 4, "id": 77, "chapter": "公差与配合"}, {"type": "single", "question": "(        )是在不同类型或同类型不同规格的产品中具有互换性的零部件。", "options": [{"label": "A", "text": "外购件"}, {"label": "B", "text": "常用件"}, {"label": "C", "text": "耐用件"}, {"label": "D", "text": "通用件"}], "answer": "D", "explain": "通用件是在不同类型或同类型不同规格的产品中具有互换性的零部件。A外购件、B常用件、C耐用件均错误。", "kpoint": "零件图与装配图", "hot": 3, "id": 78, "chapter": "零件图与装配图"}, {"type": "single", "question": "不属职业道德价值的选项是(        )。", "options": [{"label": "A", "text": "有利于企业提高产品和服务的质量"}, {"label": "B", "text": "可以降低成本、提高劳动生产率和经济效益"}, {"label": "C", "text": "有利于协调职工之间及职工与领导之间的关系"}, {"label": "D", "text": "造成行业间的恶性竞争，压缩了利润空间"}], "answer": "D", "explain": "造成行业间恶性竞争、压缩利润空间不属于职业道德的价值。A、B、C均为职业道德的积极作用。", "kpoint": "劳动法与职业道德", "hot": 3, "id": 79, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "一个平面的V面投影成线段，则该平面为(        )。", "options": [{"label": "A", "text": "正垂面"}, {"label": "B", "text": "水平面"}, {"label": "C", "text": "侧平面"}, {"label": "D", "text": "以上三个答案都对"}], "answer": "D", "explain": "平面的V面投影积聚为线段，可能是正垂面（垂直V面）、水平面（平行H面）或侧平面（平行W面），三者都垂直V面。A、B、C不全面。", "kpoint": "投影与三视图", "hot": 3, "id": 80, "chapter": "投影与三视图"}, {"type": "single", "question": "移出断面图尽可能画在剖切位置线的(        )。", "options": [{"label": "A", "text": "上方"}, {"label": "B", "text": "一边"}, {"label": "C", "text": "延长线上"}, {"label": "D", "text": "下方"}], "answer": "C", "explain": "移出断面图应尽可能画在剖切位置线的延长线上。A上方、B一边、D下方均错误。", "kpoint": "剖视图与断面", "hot": 3, "id": 81, "chapter": "剖视图与断面"}, {"type": "single", "question": "在尺寸标注中代表厚度的符号是(        )", "options": [{"label": "A", "text": "t"}, {"label": "B", "text": "Φ"}, {"label": "C", "text": "SR"}, {"label": "D", "text": "R"}], "answer": "A", "explain": "尺寸标注中代表厚度的符号是t。BΦ为直径；C SR为球半径；D R为半径。", "kpoint": "尺寸标注", "hot": 3, "id": 82, "chapter": "尺寸标注"}, {"type": "single", "question": "可以利用以下那种方法来调用命令:(        )", "options": [{"label": "A", "text": "选择下拉菜单中的菜单项"}, {"label": "B", "text": "单击工具栏上的按钮"}, {"label": "C", "text": "在命令状态行输入命令"}, {"label": "D", "text": "三者均可"}], "answer": "D", "explain": "调用AutoCAD命令可通过下拉菜单、工具栏按钮和命令行输入，三种方法均可。A、B、C不全面。", "kpoint": "AutoCAD", "hot": 2, "id": 83, "chapter": "AutoCAD"}, {"type": "single", "question": "平面图形的作图步骤是，画基准线，画(        )，画中间线段，画连接线段。", "options": [{"label": "A", "text": "未知线段"}, {"label": "B", "text": "已知线段"}, {"label": "C", "text": "连接线段"}, {"label": "D", "text": "非连接线段"}], "answer": "B", "explain": "平面图形的作图步骤是：画基准线、画已知线段、画中间线段、画连接线段。A未知线段、C连接线段、D非连接线段顺序错误。", "kpoint": "制图工具与规范", "hot": 3, "id": 84, "chapter": "制图工具与规范"}, {"type": "single", "question": "常见的齿轮传动形式有用于(1)之间传动的圆柱齿轮、用于(2)之间传动的圆锥齿轮和用于(3)之间传动的蜗杆蜗轮三种。下列答案正确的是(        )。", "options": [{"label": "A", "text": "1两平行轴 2两相交轴 3两交错轴"}, {"label": "B", "text": "1两相交轴 2两平行轴 3两交错轴"}, {"label": "C", "text": "1两平行轴 2两交错轴 3两相交轴"}, {"label": "D", "text": "1两交错轴 2两相交轴 3两平行轴"}], "answer": "A", "explain": "圆柱齿轮用于两平行轴之间传动，圆锥齿轮用于两相交轴，蜗杆蜗轮用于两交错轴。B、C、D对应关系错误。", "kpoint": "螺纹与齿轮", "hot": 4, "id": 85, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "画移出断面图时，当剖切平面通过回转面形成的孔或凹坑的(        )时，这些结构应按剖视图绘制。", "options": [{"label": "A", "text": "转向线"}, {"label": "B", "text": "点划线"}, {"label": "C", "text": "轴线"}, {"label": "D", "text": "轮廓线"}], "answer": "C", "explain": "画移出断面图时，剖切平面通过回转面形成的孔或凹坑的轴线时，这些结构应按剖视图绘制。A转向线、B点划线、D轮廓线均错误。", "kpoint": "剖视图与断面", "hot": 3, "id": 86, "chapter": "剖视图与断面"}, {"type": "single", "question": "尺寸合理是指标注的尺寸能满足(        )要求，又便于加工和测量。", "options": [{"label": "A", "text": "制造"}, {"label": "B", "text": "工艺"}, {"label": "C", "text": "加工"}, {"label": "D", "text": "设计"}], "answer": "D", "explain": "尺寸合理是指标注的尺寸能满足设计要求，又便于加工和测量。A制造、B工艺、C加工均不全面。", "kpoint": "尺寸标注", "hot": 3, "id": 87, "chapter": "尺寸标注"}, {"type": "single", "question": "局部视图最好画在有关视图的附近，并按基本视图配置的形式配置。必要时，也可以画在其他(        )的位置。", "options": [{"label": "A", "text": "与视图无关"}, {"label": "B", "text": "空白"}, {"label": "C", "text": "无投影关系"}, {"label": "D", "text": "适当"}], "answer": "D", "explain": "局部视图最好画在有关视图附近，必要时也可以画在其他适当的位置。A与视图无关、B空白、C无投影关系表述均不准确。", "kpoint": "剖视图与断面", "hot": 2, "id": 88, "chapter": "剖视图与断面"}, {"type": "single", "question": "螺纹标注符号M20-5g6g-40中，M表示(        )。", "options": [{"label": "A", "text": "管螺纹"}, {"label": "B", "text": "锯齿形螺纹"}, {"label": "C", "text": "梯形螺纹"}, {"label": "D", "text": "普通螺纹"}], "answer": "D", "explain": "螺纹标记M20-5g6g-40中，M表示普通螺纹。A管螺纹用G等代号；B锯齿形螺纹用B；C梯形螺纹用Tr。", "kpoint": "螺纹与齿轮", "hot": 5, "id": 89, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "点的位置可由点到(        )个投影面的距离来决定。", "options": [{"label": "A", "text": "1"}, {"label": "B", "text": "2"}, {"label": "C", "text": "3"}, {"label": "D", "text": "4"}], "answer": "C", "explain": "点的位置可由点到三个投影面的距离（即x、y、z三个坐标）来决定。A、B、D错误。", "kpoint": "投影与三视图", "hot": 4, "id": 90, "chapter": "投影与三视图"}, {"type": "single", "question": "(        )是对制图员基本素质的要求。", "options": [{"label": "A", "text": "遵纪守法"}, {"label": "B", "text": "职业道德"}, {"label": "C", "text": "讲究公德"}, {"label": "D", "text": "注重信誉"}], "answer": "C", "explain": "讲究公德是对制图员基本素质的要求。A遵纪守法、B职业道德、D注重信誉对应其他方面的要求。", "kpoint": "劳动法与职业道德", "hot": 2, "id": 91, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "(        )为一定的轴的公差带，与不同基本偏差的孔的公差带形成各种配合的一种制度。", "options": [{"label": "A", "text": "基轴制是实际偏差"}, {"label": "B", "text": "基轴制是基本偏差"}, {"label": "C", "text": "基孔制是实际偏差"}, {"label": "D", "text": "基孔制是基本偏差"}], "answer": "B", "explain": "基轴制是以轴的公差带（基本偏差一定）与不同基本偏差的孔的公差带形成各种配合的制度。A、C实际偏差概念错误；D为基孔制。", "kpoint": "公差与配合", "hot": 4, "id": 92, "chapter": "公差与配合"}, {"type": "single", "question": "求一般位置平面的实形时，先变换为投影面的垂直面，再变换为投影面的(        )。", "options": [{"label": "A", "text": "垂直面"}, {"label": "B", "text": "平行面"}, {"label": "C", "text": "倾斜面"}, {"label": "D", "text": "相交面"}], "answer": "B", "explain": "求一般位置平面的实形需两次换面：先变换为投影面的垂直面，再变换为投影面的平行面。A、C、D错误。", "kpoint": "投影与三视图", "hot": 4, "id": 93, "chapter": "投影与三视图"}, {"type": "single", "question": "用齿条型刀具范成加工渐开线直齿圆柱齿轮，当(        )_时，将发生根切现象。", "options": [{"label": "A", "text": "Z=17"}, {"label": "B", "text": "Z&lt;17"}, {"label": "C", "text": "Z&gt;17"}, {"label": "D", "text": "Z=14"}], "answer": "B", "explain": "用齿条型刀具范成加工渐开线直齿圆柱齿轮，当齿数Z<17时将发生根切现象。A、D不满足根切条件；C不会根切。", "kpoint": "螺纹与齿轮", "hot": 4, "id": 94, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "螺纹特征代号G表示的是(        )。", "options": [{"label": "A", "text": "普通螺纹"}, {"label": "B", "text": "传动螺纹"}, {"label": "C", "text": "非螺纹密封的管螺纹"}, {"label": "D", "text": "螺纹密封的管螺纹"}], "answer": "C", "explain": "螺纹特征代号G表示非螺纹密封的管螺纹。A普通螺纹用M；B传动螺纹用Tr、B等；D螺纹密封管螺纹用R、Rp、Rc。", "kpoint": "螺纹与齿轮", "hot": 4, "id": 95, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "若空间直线AB两端点的坐标为A(12，12，3)和B(15，15，8)，则该直线属于(        )。", "options": [{"label": "A", "text": "铅垂线"}, {"label": "B", "text": "正平线"}, {"label": "C", "text": "水平线"}, {"label": "D", "text": "一般位置直"}], "answer": "D", "explain": "直线AB两端点坐标x、y、z均变化，既不平行也不垂直于任何投影面，属于一般位置直线。A铅垂线要求x、y坐标相同；B、C错误。", "kpoint": "投影与三视图", "hot": 3, "id": 96, "chapter": "投影与三视图"}, {"type": "single", "question": "连接紧固用的螺纹大都是(        )。", "options": [{"label": "A", "text": "三角螺纹"}, {"label": "B", "text": "梯形螺纹"}, {"label": "C", "text": "锯齿形螺纹"}, {"label": "D", "text": "矩形螺纹"}], "answer": "A", "explain": "连接紧固用的螺纹大都是三角螺纹，牙型角60°、自锁性好。B梯形、C锯齿形、D矩形螺纹主要用于传动。", "kpoint": "螺纹与齿轮", "hot": 4, "id": 97, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "(        )与其他图线相交时，应在线段处相交，而不应在间隙处相交。", "options": [{"label": "A", "text": "粗实线、细实线"}, {"label": "B", "text": "虚线、点画线"}, {"label": "C", "text": "波浪线、双折线"}, {"label": "D", "text": "边框线、轮廓线"}], "answer": "B", "explain": "虚线、点画线与其他图线相交时，应在线段处相交，不应在间隙处相交。A、C、D错误。", "kpoint": "图线", "hot": 3, "id": 98, "chapter": "图线"}, {"type": "single", "question": "画(        )，首先掌握好单个零件轴测图的画法。", "options": [{"label": "A", "text": "轴测图"}, {"label": "B", "text": "三视图"}, {"label": "C", "text": "装配图"}, {"label": "D", "text": "轴测装配剖视图"}], "answer": "D", "explain": "画轴测装配剖视图，首先要掌握好单个零件轴测图的画法。A轴测图、B三视图、C装配图均不是前提条件。", "kpoint": "轴测图", "hot": 2, "id": 99, "chapter": "轴测图"}, {"type": "single", "question": "平面与球相交，且平面平行于W面时，截交线的水平投影为(        )。", "options": [{"label": "A", "text": "圆"}, {"label": "B", "text": "椭圆"}, {"label": "C", "text": "矩形"}, {"label": "D", "text": "直线"}], "answer": "D", "explain": "截平面平行于W面截球时，截交线的水平投影为直线（侧平面积聚为直线）。A圆为截面平行H面所得；B、C错误。", "kpoint": "截交线与相贯线", "hot": 4, "id": 100, "chapter": "截交线与相贯线"}, {"type": "single", "question": "画图时，铅笔在前后方向应与纸面(        )，而且向画线前进方向倾斜。", "options": [{"label": "A", "text": "垂直"}, {"label": "B", "text": "平行"}, {"label": "C", "text": "左斜"}, {"label": "D", "text": "右斜"}], "answer": "A", "explain": "画图时铅笔在前后方向应与纸面垂直，并向画线前进方向倾斜。B平行、C左斜、D右斜均错误。", "kpoint": "制图工具与规范", "hot": 3, "id": 101, "chapter": "制图工具与规范"}, {"type": "single", "question": "画组合体的正等轴测图，一般用(        )将组合体分解成若干个基本体。", "options": [{"label": "A", "text": "换面法"}, {"label": "B", "text": "形体分析法"}, {"label": "C", "text": "正投影法"}, {"label": "D", "text": "透视法"}], "answer": "B", "explain": "画组合体的正等轴测图，一般用形体分析法将组合体分解成若干个基本体。A换面法、C正投影法、D透视法均不用于分解组合体。", "kpoint": "轴测图", "hot": 4, "id": 102, "chapter": "轴测图"}, {"type": "single", "question": "正等轴测图中，轴向变形系数为(        )。", "options": [{"label": "A", "text": "0.82"}, {"label": "B", "text": "1"}, {"label": "C", "text": "1.22"}, {"label": "D", "text": "1.5"}], "answer": "A", "explain": "正等轴测图的轴向变形系数为0.82（简化系数为1）。B、C、D错误。", "kpoint": "轴测图", "hot": 3, "id": 103, "chapter": "轴测图"}, {"type": "single", "question": "下列属于缩小比例是(        )", "options": [{"label": "A", "text": "01:03:00"}, {"label": "B", "text": "02:01:00"}, {"label": "C", "text": "01:01:00"}, {"label": "D", "text": "都不是"}], "answer": "A", "explain": "1:3属于缩小比例。B 2:1为放大比例；C 1:1为原值比例；D错误。", "kpoint": "比例", "hot": 2, "id": 104, "chapter": "比例"}, {"type": "single", "question": "标注表面粗糙度时，当零件所有表面具有相同的特征时，其代号可(        )，且代号的大小应为图样上其他代号的倍。", "options": [{"label": "A", "text": "在图样的右上角统一标注"}, {"label": "B", "text": "在图样的右下角统一标注"}, {"label": "C", "text": "在图样的左上角统一标注"}, {"label": "D", "text": "在图样的左下角统一标注"}], "answer": "A", "explain": "当零件所有表面具有相同的表面粗糙度要求时，其代号可在图样的右上角统一标注。B、C、D位置错误。", "kpoint": "公差与配合", "hot": 3, "id": 105, "chapter": "公差与配合"}, {"type": "single", "question": "两圆孔轴线正交相贯，且直径不等时，相贯线应向(        )方向弯曲。", "options": [{"label": "A", "text": "直径大的轴线"}, {"label": "B", "text": "直径小的轴线"}, {"label": "C", "text": "直径大的转向线"}, {"label": "D", "text": "直径小的转向线"}], "answer": "A", "explain": "两圆孔轴线正交相贯且直径不等时，相贯线向直径大的轴线方向弯曲。B、C、D错误。", "kpoint": "截交线与相贯线", "hot": 4, "id": 106, "chapter": "截交线与相贯线"}, {"type": "single", "question": "导程、螺距、线数的关系是(        )。", "options": [{"label": "A", "text": "线数=导程×螺距"}, {"label": "B", "text": "螺距=导程×线数"}, {"label": "C", "text": "导程=螺距×线数"}, {"label": "D", "text": "导程=螺距/线数"}], "answer": "C", "explain": "导程、螺距、线数的关系是：导程=螺距×线数。A、B、D关系式错误。", "kpoint": "螺纹与齿轮", "hot": 4, "id": 107, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "在一张复杂图样中，包含了很多大小不等的圆,要快速选择出半径20的圆，怎样实现?(        )", "options": [{"label": "A", "text": "单击"}, {"label": "B", "text": "快速选择(Qselect)"}, {"label": "C", "text": "框选"}, {"label": "D", "text": "Last 方式"}], "answer": "B", "explain": "在一张复杂图样中快速选择半径20的圆，可用快速选择（Qselect）按半径属性筛选。A单击、C框选、D Last方式均无法按属性筛选。", "kpoint": "AutoCAD", "hot": 2, "id": 108, "chapter": "AutoCAD"}, {"type": "single", "question": "折叠后的图纸幅面一般应有(        )的规格。", "options": [{"label": "A", "text": "A0或A1"}, {"label": "B", "text": "A1或A2"}, {"label": "C", "text": "A2或A3"}, {"label": "D", "text": "A3或A4"}], "answer": "D", "explain": "折叠后的图纸幅面一般应有A3或A4的规格。A、B、C错误。", "kpoint": "制图工具与规范", "hot": 2, "id": 109, "chapter": "制图工具与规范"}, {"type": "single", "question": "画(        )的正等轴测图，一般采用切割法。", "options": [{"label": "A", "text": "组合体"}, {"label": "B", "text": "装配体"}, {"label": "C", "text": "圆柱"}, {"label": "D", "text": "切割体"}], "answer": "D", "explain": "画切割体的正等轴测图，一般采用切割法。A组合体、B装配体、C圆柱均不适用切割法绘制。", "kpoint": "轴测图", "hot": 3, "id": 110, "chapter": "轴测图"}, {"type": "single", "question": "正等轴测图轴向简化系数是从(        )开始测量的。", "options": [{"label": "A", "text": "X轴"}, {"label": "B", "text": "Y轴"}, {"label": "C", "text": "Z轴"}, {"label": "D", "text": "O点"}], "answer": "D", "explain": "正等轴测图轴向变形系数的测量从原点O开始，沿各轴测量。A、B、C错误。", "kpoint": "轴测图", "hot": 2, "id": 111, "chapter": "轴测图"}, {"type": "single", "question": "空间三个坐标轴在轴测投影面上轴向变形系数一样的投影，称为(        )。", "options": [{"label": "A", "text": "正轴测投影"}, {"label": "B", "text": "斜轴测投影"}, {"label": "C", "text": "正等轴测投影"}, {"label": "D", "text": "斜二轴测投影"}], "answer": "C", "explain": "空间三个坐标轴在轴测投影面上轴向变形系数相同的投影，称为正等轴测投影。A正轴测、B斜轴测、D斜二轴测（两个系数相同）均不符。", "kpoint": "轴测图", "hot": 3, "id": 112, "chapter": "轴测图"}, {"type": "single", "question": "工资一般不包括(        )。", "options": [{"label": "A", "text": "计时工资、计件工资"}, {"label": "B", "text": "奖金、津贴和补贴"}, {"label": "C", "text": "延长工作时间的工资报酬"}, {"label": "D", "text": "工伤赔偿"}], "answer": "D", "explain": "工伤赔偿属于社会保险待遇，不包括在工资内。A计时计件工资、B奖金津贴补贴、C延长工作时间的工资报酬均属于工资。", "kpoint": "劳动法与职业道德", "hot": 3, "id": 113, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "斜齿圆柱齿轮螺旋角β的一般取值范围为(        )。", "options": [{"label": "A", "text": "β=2°~10°"}, {"label": "B", "text": "β=8°~25°"}, {"label": "C", "text": "β=15°~30°"}, {"label": "D", "text": "β=20°~40°"}], "answer": "B", "explain": "斜齿圆柱齿轮螺旋角β的一般取值范围为8°~25°。A、C、D范围均错误。", "kpoint": "螺纹与齿轮", "hot": 2, "id": 114, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "沿轴测量是(        )的要领。", "options": [{"label": "A", "text": "选取轴测图"}, {"label": "B", "text": "绘制剖视图"}, {"label": "C", "text": "选取辅助平面"}, {"label": "D", "text": "绘制轴测图"}], "answer": "D", "explain": "沿轴测量是绘制轴测图的要领。A选取轴测图、B绘制剖视图、C选取辅助平面均错误。", "kpoint": "轴测图", "hot": 3, "id": 115, "chapter": "轴测图"}, {"type": "single", "question": "下列(        )不属于劳动合同订立的原则。", "options": [{"label": "A", "text": "合法"}, {"label": "B", "text": "公平"}, {"label": "C", "text": "平等自愿"}, {"label": "D", "text": "单位强制"}], "answer": "D", "explain": "单位强制不属于劳动合同订立的原则；订立原则为合法、公平、平等自愿、协商一致、诚实信用。A、B、C均为合法原则。", "kpoint": "劳动法与职业道德", "hot": 4, "id": 116, "chapter": "劳动法与职业道德"}, {"type": "single", "question": "用换面法求一般位置直线AB与V面倾角时，新坐标轴必须平行于(        )。", "options": [{"label": "A", "text": "a′b′"}, {"label": "B", "text": "ab"}, {"label": "C", "text": "a〞b〞"}, {"label": "D", "text": "AB"}], "answer": "A", "explain": "用换面法求一般位置直线AB与V面的倾角时，新坐标轴必须平行于直线的V面投影a′b′。B、C、D错误。", "kpoint": "投影与三视图", "hot": 3, "id": 117, "chapter": "投影与三视图"}, {"type": "single", "question": "投影图的坐标与(        )的坐标之间的对应关系是能否正确绘制轴测图的关键。", "options": [{"label": "A", "text": "三视图"}, {"label": "B", "text": "主视图"}, {"label": "C", "text": "轴测图"}, {"label": "D", "text": "剖视图"}], "answer": "C", "explain": "投影图的坐标与轴测图的坐标之间的对应关系，是能否正确绘制轴测图的关键。A三视图、B主视图、D剖视图均错误。", "kpoint": "轴测图", "hot": 3, "id": 118, "chapter": "轴测图"}, {"type": "single", "question": "一条线段的H面投影成一点，则该线段为(        )。", "options": [{"label": "A", "text": "水平线"}, {"label": "B", "text": "正垂线"}, {"label": "C", "text": "铅垂线"}, {"label": "D", "text": "侧垂线"}], "answer": "C", "explain": "线段的H面投影积聚为一点，说明该线段垂直于H面，为铅垂线。A水平线的H面投影反映实长；B正垂线垂直V面；D侧垂线垂直W面。", "kpoint": "投影与三视图", "hot": 4, "id": 119, "chapter": "投影与三视图"}, {"type": "single", "question": "正等轴测图上的椭圆是用(        )绘制的。", "options": [{"label": "A", "text": "直尺"}, {"label": "B", "text": "二心法"}, {"label": "C", "text": "四心法"}, {"label": "D", "text": "一个圆心"}], "answer": "C", "explain": "正等轴测图上的椭圆是用四心法（近似画法）绘制的。A直尺、B二心法、D一个圆心均错误。", "kpoint": "轴测图", "hot": 3, "id": 120, "chapter": "轴测图"}, {"type": "single", "question": "从定义表中清除指定外部参照的所有实例，需要将外部参照?(        )", "options": [{"label": "A", "text": "孤立"}, {"label": "B", "text": "拆离"}, {"label": "C", "text": "卸载"}, {"label": "D", "text": "删除"}], "answer": "D", "explain": "从定义表中清除指定外部参照的所有实例，需要删除该外部参照。A孤立、B拆离、C卸载均不能从定义表清除。", "kpoint": "AutoCAD", "hot": 2, "id": 121, "chapter": "AutoCAD"}, {"type": "single", "question": "表示螺纹尺寸的(        )称为公称直径，一般是指螺纹的大径。", "options": [{"label": "A", "text": "长度"}, {"label": "B", "text": "直径"}, {"label": "C", "text": "宽度"}, {"label": "D", "text": "高度"}], "answer": "B", "explain": "表示螺纹尺寸的直径称为公称直径，一般是指螺纹的大径。A长度、C宽度、D高度均错误。", "kpoint": "螺纹与齿轮", "hot": 4, "id": 122, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "在轴测装配图上作剖视，实质上就是在各零件的(        )上作剖视。", "options": [{"label": "A", "text": "轴测图"}, {"label": "B", "text": "三视图"}, {"label": "C", "text": "剖视图"}, {"label": "D", "text": "零件图"}], "answer": "A", "explain": "在轴测装配图上作剖视，实质上就是在各零件的轴测图上作剖视。B三视图、C剖视图、D零件图均不对。", "kpoint": "轴测图", "hot": 3, "id": 123, "chapter": "轴测图"}, {"type": "single", "question": "常用的销有圆柱销、圆锥销和(        )销等。", "options": [{"label": "A", "text": "开放"}, {"label": "B", "text": "开孔"}, {"label": "C", "text": "开槽"}, {"label": "D", "text": "开口"}], "answer": "D", "explain": "常用的销有圆柱销、圆锥销和开口销等。A开放、B开孔、C开槽均错误。", "kpoint": "零件图与装配图", "hot": 3, "id": 124, "chapter": "零件图与装配图"}, {"type": "single", "question": "画轴测装配剖视图，一般先画出完整的装配图，然后进行(        )。", "options": [{"label": "A", "text": "分解"}, {"label": "B", "text": "剖切"}, {"label": "C", "text": "组合"}, {"label": "D", "text": "形体分析"}], "answer": "B", "explain": "画轴测装配剖视图，一般先画出完整的装配图，然后进行剖切。A分解、C组合、D形体分析不是后续步骤。", "kpoint": "轴测图", "hot": 2, "id": 125, "chapter": "轴测图"}, {"type": "single", "question": "相邻两轴测轴之间的夹角，称为(        )。", "options": [{"label": "A", "text": "夹角"}, {"label": "B", "text": "轴间角"}, {"label": "C", "text": "两面角"}, {"label": "D", "text": "倾斜角"}], "answer": "B", "explain": "相邻两轴测轴之间的夹角，称为轴间角。A夹角、C两面角、D倾斜角均非标准术语。", "kpoint": "轴测图", "hot": 4, "id": 126, "chapter": "轴测图"}, {"type": "single", "question": "比例1:1是(        )", "options": [{"label": "A", "text": "原值比例"}, {"label": "B", "text": "放大比例"}, {"label": "C", "text": "缩小比例"}, {"label": "D", "text": "都不是"}], "answer": "A", "explain": "比例1:1是原值比例。B放大比例、C缩小比例、D均错误。", "kpoint": "比例", "hot": 3, "id": 127, "chapter": "比例"}, {"type": "single", "question": "一张完整的零件图应包括视图、尺寸、技术要求和(        )", "options": [{"label": "A", "text": "细目栏"}, {"label": "B", "text": "标题栏"}, {"label": "C", "text": "列表栏"}, {"label": "D", "text": "项目栏"}], "answer": "B", "explain": "一张完整的零件图应包括视图、尺寸、技术要求和标题栏。A细目栏、C列表栏、D项目栏均错误。", "kpoint": "零件图与装配图", "hot": 4, "id": 128, "chapter": "零件图与装配图"}, {"type": "single", "question": "一般应在剖视图的上方用大写字母标出剖视图的名称“x-x”，在相应视图上用剖切符号表示剖切位置，用(        )表示投影方向，并注上相同的字母。", "options": [{"label": "A", "text": "粗短线"}, {"label": "B", "text": "细短线"}, {"label": "C", "text": "粗实线"}, {"label": "D", "text": "箭头"}], "answer": "D", "explain": "剖视图标注中，用剖切符号表示剖切位置，用箭头表示投影方向，并注上相同的字母。A粗短线、B细短线、C粗实线均错误。", "kpoint": "剖视图与断面", "hot": 4, "id": 129, "chapter": "剖视图与断面"}, {"type": "single", "question": "平面与圆锥相交，当截交线形状为三角形时，说明截平面(        )。", "options": [{"label": "A", "text": "倾斜于轴线"}, {"label": "B", "text": "垂直于轴线"}, {"label": "C", "text": "平行于轴线"}, {"label": "D", "text": "通过锥顶"}], "answer": "D", "explain": "平面与圆锥相交，当截交线形状为三角形时，说明截平面通过锥顶。A倾斜于轴线截得椭圆；B垂直于轴线截得圆；C平行于轴线截得双曲线。", "kpoint": "截交线与相贯线", "hot": 4, "id": 130, "chapter": "截交线与相贯线"}, {"type": "single", "question": "画斜剖视图时，最好配置在(        )所指的方向，并符合投影关系。", "options": [{"label": "A", "text": "投影"}, {"label": "B", "text": "剖切面"}, {"label": "C", "text": "剖切位置"}, {"label": "D", "text": "箭头"}], "answer": "D", "explain": "画斜剖视图时，最好配置在箭头所指的方向，并符合投影关系。A投影、B剖切面、C剖切位置均错误。", "kpoint": "剖视图与断面", "hot": 2, "id": 131, "chapter": "剖视图与断面"}, {"type": "single", "question": "以下说法正确的是(        )。", "options": [{"label": "A", "text": "斜二轴测图是根据中心投影法绘制的"}, {"label": "B", "text": "斜二轴测图是根据正投影法绘制的"}, {"label": "C", "text": "正等轴测图是根据平行投影法绘制的"}, {"label": "D", "text": "正等轴测图是根据斜投影法绘制的"}], "answer": "D", "explain": "按题库答案，正等轴测图是根据斜投影法绘制的。A斜二轴测图非中心投影法；B斜二轴测图非正投影法；C正等轴测图为正投影法（题库答案为D）。", "kpoint": "轴测图", "hot": 3, "id": 132, "chapter": "轴测图"}, {"type": "single", "question": "采用波浪线作为剖开部分与未剖开部分的分界线时，适用于(        )。", "options": [{"label": "A", "text": "全剖视图"}, {"label": "B", "text": "局部剖视图"}, {"label": "C", "text": "半剖视图"}, {"label": "D", "text": "局部视图"}], "answer": "B", "explain": "波浪线作为剖开部分与未剖开部分的分界线，适用于局部剖视图。A全剖视图无需分界线；C半剖视图用细点画线；D局部视图不用剖面。", "kpoint": "剖视图与断面", "hot": 4, "id": 133, "chapter": "剖视图与断面"}, {"type": "single", "question": "用5:1的比例画机件,若图纸上长度为30㎜,则该机件实际长度为(        )。", "options": [{"label": "A", "text": "5㎜"}, {"label": "B", "text": "30㎜"}, {"label": "C", "text": "6㎜"}, {"label": "D", "text": "150㎜"}], "answer": "C", "explain": "5:1为放大比例，图纸长度30mm对应实际长度30÷5=6mm。A、B、D计算错误。", "kpoint": "比例", "hot": 4, "id": 134, "chapter": "比例"}, {"type": "single", "question": "一次换面中，新投影面的设立必须与某一(        )垂直。", "options": [{"label": "A", "text": "新投影面"}, {"label": "B", "text": "垂直投影面"}, {"label": "C", "text": "基本投影面"}, {"label": "D", "text": "斜投影面"}], "answer": "C", "explain": "一次换面中，新投影面的设立必须与某一基本投影面垂直。A新投影面、B垂直投影面、D斜投影面均错误。", "kpoint": "投影与三视图", "hot": 3, "id": 135, "chapter": "投影与三视图"}, {"type": "single", "question": "若采用5:1的比例绘制一个直径为10mm的圆，其绘制直径为(        )mm。", "options": [{"label": "A", "text": "2"}, {"label": "B", "text": "5"}, {"label": "C", "text": "10"}, {"label": "D", "text": "50"}], "answer": "D", "explain": "5:1放大比例绘制直径10mm的圆，绘制直径为10×5=50mm。A、B、C计算错误。", "kpoint": "比例", "hot": 4, "id": 136, "chapter": "比例"}, {"type": "single", "question": "GB/T1096-2003中键B12×8×32是指(        )", "options": [{"label": "A", "text": "键宽×键高×键长"}, {"label": "B", "text": "键长×键宽×键高"}, {"label": "C", "text": "键高×键宽×键长"}, {"label": "D", "text": "键宽×键长×键高"}], "answer": "C", "explain": "按题库答案，GB/T1096-2003中键B12×8×32的标记顺序为键高×键宽×键长。A、B、D顺序与题库答案不符。", "kpoint": "零件图与装配图", "hot": 3, "id": 137, "chapter": "零件图与装配图"}, {"type": "single", "question": "管螺纹的牙型角为(        )。", "options": [{"label": "A", "text": "50°"}, {"label": "B", "text": "30°"}, {"label": "C", "text": "60°"}, {"label": "D", "text": "55°"}], "answer": "D", "explain": "管螺纹的牙型角为55°。A50°无此标准；B30°为梯形螺纹；C60°为普通螺纹（米制）。", "kpoint": "螺纹与齿轮", "hot": 3, "id": 138, "chapter": "螺纹与齿轮"}, {"type": "single", "question": "在基孔制配合中,基准孔的公差带确定之后,配合的最小间隙量或最小过盈量由轴的确定(        )。", "options": [{"label": "A", "text": "基本偏差"}, {"label": "B", "text": "公差等级"}, {"label": "C", "text": "公差带"}, {"label": "D", "text": "实际偏差"}], "answer": "A", "explain": "基孔制配合中基准孔公差带确定后，配合的最小间隙量或最小过盈量由轴的基本偏差确定。B公差等级、C公差带、D实际偏差均错误。", "kpoint": "公差与配合", "hot": 4, "id": 139, "chapter": "公差与配合"}];
+
+var SITE_CONFIG = {"storagePrefix": "cx_quiz_v1", "siteName": "工程制图", "subModes": ["single"], "testCounts": {"single": 40, "multi": 0, "tf": 0}, "testSelection": "coverage"};
+
+var mode = null, subMode = null, currentQuestions = [], currentIndex = 0;
+var userAnswers = {}, showFeedback = {}, practiceDone = {};
+var sessionKey = 'history_quiz_session';
+var sessionDoneKey = 'history_quiz_done';
+
+if (typeof SITE_CONFIG === 'object' && SITE_CONFIG.storagePrefix) {
+  sessionKey = SITE_CONFIG.storagePrefix + '_session';
+  sessionDoneKey = SITE_CONFIG.storagePrefix + '_done';
+}
+
+function shuffle(a) { var b = a.slice(); for (var i = b.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = b[i]; b[i] = b[j]; b[j] = t; } return b; }
+
+function persistSession() {
+  try {
+    if (mode && currentQuestions.length > 0) {
+      localStorage.setItem(sessionKey, JSON.stringify({
+        mode: mode, subMode: subMode,
+        questions: currentQuestions,
+        index: currentIndex,
+        answers: userAnswers,
+        feedback: showFeedback
+      }));
+    } else {
+      localStorage.removeItem(sessionKey);
+    }
+  } catch(e) {}
+}
+
+function resumeSession() {
+  try {
+    var raw = localStorage.getItem(sessionKey);
+    if (!raw) return false;
+    var s = JSON.parse(raw);
+    if (!s || !s.questions || !s.questions.length) return false;
+    mode = s.mode || null; subMode = s.subMode || null;
+    currentQuestions = s.questions; currentIndex = s.index || 0;
+    userAnswers = s.answers || {}; showFeedback = s.feedback || {};
+    if (currentIndex >= currentQuestions.length) currentIndex = currentQuestions.length - 1;
+    return true;
+  } catch(e) { return false; }
+}
+
+function getGlobalIdx(q) {
+  for (var i = 0; i < ALL_QUESTIONS.length; i++) {
+    if (ALL_QUESTIONS[i].chapter === q.chapter && ALL_QUESTIONS[i].type === q.type && ALL_QUESTIONS[i].id === q.id) return i;
+  }
+  return -1;
+}
+
+function loadPracticeDone() {
+  try { var d = localStorage.getItem(sessionDoneKey); practiceDone = d ? JSON.parse(d) : {}; } catch(e) { practiceDone = {}; }
+}
+function savePracticeDone() {
+  try { localStorage.setItem(sessionDoneKey, JSON.stringify(practiceDone)); } catch(e) {}
+}
+function isDone(q) { return !!practiceDone[getGlobalIdx(q)]; }
+function markDone(q) { practiceDone[getGlobalIdx(q)] = true; savePracticeDone(); }
+
+function goBack() {
+  if (Object.keys(userAnswers).length === 0) {
+    doGoBack();
+    return;
+  }
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = '<div class="confirm-dialog"><p>确定要返回吗？<br>当前答题进度将丢失。</p><div class="btns"><button class="btn btn-outline btn-sm" id="confirmCancel">取消</button><button class="btn btn-primary btn-sm" id="confirmOk" style="background:#c0392b">确认返回</button></div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#confirmCancel').addEventListener('click', function() { overlay.remove(); });
+  overlay.querySelector('#confirmOk').addEventListener('click', function() { overlay.remove(); doGoBack(); });
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+function doGoBack() {
+  if (mode === 'practice' && subMode) {
+    currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+    persistSession();
+    renderMain();
+  } else if (mode === 'test') {
+    currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+    mode = null;
+    persistSession();
+    renderMain();
+  } else {
+    mode = null; subMode = null;
+    currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+    persistSession();
+    renderMain();
+  }
+}
+
+function renderHeader() {
+  var backBtn = document.getElementById('headerBackBtn');
+  var el = document.getElementById('headerRight');
+  if (!mode || currentQuestions.length === 0) {
+    el.innerHTML = '';
+    backBtn.classList.remove('visible');
+    return;
+  }
+  backBtn.classList.add('visible');
+  var total = currentQuestions.length;
+  var answered = Object.keys(userAnswers).length;
+  var pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+  var html = '<div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-text">' + answered + '/' + total + '</span></div>';
+  html += '<div style="position:relative"><button class="status-btn" id="statusBtn">📋</button><div class="status-panel" id="statusPanel"></div></div>';
+  el.innerHTML = html;
+  document.getElementById('statusBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    var panel = document.getElementById('statusPanel');
+    renderStatusPanel();
+    panel.classList.toggle('show');
+  });
+  document.addEventListener('click', function() { var p = document.getElementById('statusPanel'); if (p) p.classList.remove('show'); });
+}
+
+function renderStatusPanel() {
+  var el = document.getElementById('statusPanel'); if (!el) return;
+  var total = currentQuestions.length;
+  var doneCount = 0;
+  var html = '<h4>完成状态（<span id="statusDoneCount">0</span>/' + total + '）<br><span style="font-weight:400;font-size:11px">绿色=已答 灰色=未答 蓝色框=当前</span></h4><div class="status-grid">';
+  currentQuestions.forEach(function(q, i) {
+    var d = (userAnswers[i] !== undefined);
+    if (mode === 'practice') d = d || isDone(q);
+    if (d) doneCount++;
+    var cur = (i === currentIndex) ? ' current' : '';
+    html += '<div class="status-circle' + (d ? ' done' : '') + cur + '" data-idx="' + i + '" title="第' + (i+1) + '题' + (d ? ' ✓' : '') + '">' + (i + 1) + '</div>';
+  });
+  html += '</div>';
+  if (mode === 'test') {
+    html += '<div style="text-align:center;margin-top:14px"><button class="btn btn-primary btn-sm" id="panelSubmitBtn" style="width:auto;padding:8px 32px;background:#c0392b">提交试卷</button></div>';
+  }
+  el.innerHTML = html;
+  el.querySelector('#statusDoneCount').textContent = doneCount;
+  el.querySelectorAll('.status-circle').forEach(function(circle) {
+    circle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      currentIndex = parseInt(circle.dataset.idx);
+      renderQuiz();
+      el.classList.remove('show');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+  var psb = el.querySelector('#panelSubmitBtn');
+  if (psb) psb.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (Object.keys(userAnswers).length === 0) { alert('请至少回答一道题再提交'); return; }
+    var ok = confirm('确定要提交试卷吗？未作答的题目将计为错误。');
+    if (ok) {
+      el.classList.remove('show');
+      renderResult(document.getElementById('main'));
+      renderHeader();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+}
+
+function renderMain() {
+  var el = document.getElementById('main');
+  if (!mode) { renderModeSelect(el); }
+  else if (currentQuestions.length === 0) { renderSubModeSelect(el); }
+  else { renderQuiz(); }
+  renderHeader();
+}
+
+function renderModeSelect(el) {
+  var totalCount = ALL_QUESTIONS.length;
+  var testDesc = '';
+  var tc = (SITE_CONFIG && SITE_CONFIG.testCounts) || { single: 20, multi: 20, tf: 10 };
+  var parts = [];
+  if (tc.single) parts.push('单选' + tc.single + '题');
+  if (tc.multi) parts.push('多选' + tc.multi + '题');
+  if (tc.tf) parts.push('判断' + tc.tf + '题');
+  testDesc = parts.join(' + ');
+  el.innerHTML = '<div class="page-title"><h2>工程制图</h2><p>题库练习与测试系统 · 共 ' + totalCount + ' 题</p></div><div class="mode-grid"><div class="mode-card" data-mode="practice"><div class="icon">📝</div><h3>刷题模式</h3><p>按题型分类练习<br>即时反馈，记录进度</p></div><div class="mode-card" data-mode="test"><div class="icon">📋</div><h3>测试模式</h3><p>' + testDesc + '<br>每题2分</p></div></div>';
+  el.querySelectorAll('.mode-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      mode = card.dataset.mode;
+      currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
+      if (mode === 'test') { startTest(); }
+      else if (SITE_CONFIG && SITE_CONFIG.subModes && SITE_CONFIG.subModes.length === 1) {
+        subMode = SITE_CONFIG.subModes[0];
+        currentQuestions = ALL_QUESTIONS.filter(function(q) { return q.type === subMode; });
+        persistSession();
+        renderMain();
+      } else { persistSession(); renderMain(); }
+    });
+  });
+}
+
+function renderSubModeSelect(el) {
+  var counts = { single: 0, multi: 0, tf: 0 };
+  ALL_QUESTIONS.forEach(function(q) { counts[q.type]++; });
+  var subs = (SITE_CONFIG && SITE_CONFIG.subModes) || ['single', 'multi', 'tf'];
+  var labels = { single: '单选题', multi: '多选题', tf: '判断题' };
+  var cardsHtml = '';
+  subs.forEach(function(s) {
+    cardsHtml += '<div class="sub-mode-card" data-sub="' + s + '">' + labels[s] + '<br><span style="font-size:12px;color:var(--text-secondary);font-weight:400">' + counts[s] + ' 题</span></div>';
+  });
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px"><button class="btn btn-outline btn-sm" id="backBtn">← 返回</button><h2 style="font-weight:600;font-size:17px">刷题模式 · 选择题型</h2></div><div class="sub-mode-grid">' + cardsHtml + '</div>';
+  el.querySelector('#backBtn').addEventListener('click', function() { mode = null; persistSession(); renderMain(); });
+  el.querySelectorAll('.sub-mode-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      subMode = card.dataset.sub;
+      currentQuestions = ALL_QUESTIONS.filter(function(q) { return q.type === subMode; });
+      currentIndex = 0; userAnswers = {}; showFeedback = {};
+      persistSession();
+      renderMain();
+    });
+  });
+}
+
+function coveragePick(pool, n) {
+  var byK = {};
+  pool.forEach(function(q) {
+    var k = q.kpoint || '其他';
+    (byK[k] = byK[k] || []).push(q);
+  });
+  var keys = shuffle(Object.keys(byK));
+  var picked = [];
+  var pickedSet = {};
+  function markPicked(q) { picked.push(q); pickedSet[q.id + '_' + q.chapter] = true; }
+  keys.forEach(function(k) {
+    var arr = shuffle(byK[k]);
+    arr.sort(function(a, b) { return (b.hot || 0) - (a.hot || 0); });
+    if (arr.length) markPicked(arr[0]);
+  });
+  if (picked.length > n) picked = picked.slice(0, n);
+  var rest = shuffle(pool.filter(function(q) { return !pickedSet[q.id + '_' + q.chapter]; }));
+  rest.sort(function(a, b) { return (b.hot || 0) - (a.hot || 0); });
+  picked = picked.concat(rest.slice(0, n - picked.length));
+  return shuffle(picked);
+}
+
+function startTest() {
+  var tc = (SITE_CONFIG && SITE_CONFIG.testCounts) || { single: 20, multi: 20, tf: 10 };
+  var singlesPool = ALL_QUESTIONS.filter(function(q) { return q.type === 'single'; });
+  var multisPool = ALL_QUESTIONS.filter(function(q) { return q.type === 'multi'; });
+  var tfsPool = ALL_QUESTIONS.filter(function(q) { return q.type === 'tf'; });
+  var useCoverage = SITE_CONFIG && SITE_CONFIG.testSelection === 'coverage';
+  var singles = useCoverage ? coveragePick(singlesPool, tc.single || 0) : shuffle(singlesPool).slice(0, tc.single || 0);
+  var multis = shuffle(multisPool).slice(0, tc.multi || 0);
+  var tfs = shuffle(tfsPool).slice(0, tc.tf || 0);
+  currentQuestions = singles.concat(multis).concat(tfs);
+  currentIndex = 0; userAnswers = {}; showFeedback = {};
+  persistSession();
+  renderMain();
+}
+
+function renderQuiz() {
+  var el = document.getElementById('main');
+  var total = currentQuestions.length;
+  if (currentIndex >= total) { renderResult(el); renderHeader(); return; }
+  var q = currentQuestions[currentIndex];
+  var qNum = currentIndex + 1;
+  var typeLabel = { single: '单选题', multi: '多选题', tf: '判断题' }[q.type];
+  var hasAnswered = showFeedback[currentIndex];
+  var userAns = userAnswers[currentIndex];
+  var optionsHtml = '';
+  if (q.type === 'tf') {
+    var tfLabels = ['对', '错'];
+    var tfLetters = ['A', 'B'];
+    optionsHtml = '<div class="options">';
+    tfLabels.forEach(function(label, i) {
+      var cls = 'option';
+      var ansVal = i === 0;
+      if (hasAnswered) cls += ' disabled';
+      if (userAns !== undefined && userAns === ansVal) cls += ' selected';
+      if (hasAnswered) {
+        if (q.answer === ansVal) cls += ' correct';
+        if (userAns !== undefined && userAns === ansVal && userAns !== q.answer) cls += ' incorrect';
+      }
+      optionsHtml += '<div class="' + cls + '" data-answer="' + ansVal + '"><span class="option-letter">' + tfLetters[i] + '</span><span>' + label + '</span></div>';
+    });
+    optionsHtml += '</div>';
+  } else if (q.type === 'multi') {
+    optionsHtml = (hasAnswered ? '' : '<div class="multi-hint">可多选，选择后点击确认</div>') + '<div class="options">';
+    q.options.forEach(function(opt) {
+      var cls = 'option'; if (hasAnswered) cls += ' disabled';
+      var selected = userAns && userAns.indexOf(opt.label) !== -1;
+      if (selected) cls += ' selected';
+      if (hasAnswered) {
+        if (q.answer.indexOf(opt.label) !== -1) cls += ' correct';
+        if (selected && q.answer.indexOf(opt.label) === -1) cls += ' incorrect';
+      }
+      optionsHtml += '<div class="' + cls + '" data-label="' + opt.label + '"><span class="option-letter">' + opt.label + '</span><span>' + opt.text + '</span></div>';
+    });
+    optionsHtml += '</div>';
+  } else {
+    optionsHtml = '<div class="options">';
+    q.options.forEach(function(opt) {
+      var cls = 'option'; if (hasAnswered) cls += ' disabled';
+      if (userAns === opt.label) cls += ' selected';
+      if (hasAnswered) {
+        if (opt.label === q.answer) cls += ' correct';
+        if (userAns === opt.label && userAns !== q.answer) cls += ' incorrect';
+      }
+      optionsHtml += '<div class="' + cls + '" data-label="' + opt.label + '"><span class="option-letter">' + opt.label + '</span><span>' + opt.text + '</span></div>';
+    });
+    optionsHtml += '</div>';
+  }
+
+  var feedbackHtml = '';
+  if (hasAnswered) {
+    var isMulti = q.type === 'multi';
+    var userDisplay, correctDisplay, isCorrect;
+    if (isMulti) {
+      userDisplay = userAns ? userAns.split('').sort().join('') : '未作答';
+      correctDisplay = q.answer;
+      isCorrect = (userAns || '').split('').sort().join('') === q.answer;
+    } else if (q.type === 'tf') {
+      userDisplay = userAns === true ? '对' : userAns === false ? '错' : '未作答';
+      correctDisplay = q.answer === true ? '对' : '错';
+      isCorrect = userAns === q.answer;
+    } else {
+      userDisplay = userAns || '未作答';
+      correctDisplay = q.answer;
+      isCorrect = userAns === q.answer;
+    }
+    feedbackHtml = '<div class="feedback show ' + (isCorrect ? 'correct' : 'incorrect') + '">' + (isCorrect ? '✓ 回答正确！' : '✗ 回答错误，正确答案是 <strong>' + correctDisplay + '</strong>') + '</div>';
+    if (q.explain) {
+      feedbackHtml += '<div class="explain-box"><span class="explain-label">解析</span><span class="explain-text">' + q.explain + '</span></div>';
+    }
+  }
+
+  var navHtml = '';
+  var isLast = (currentIndex >= total - 1);
+  if (hasAnswered) {
+    navHtml += (currentIndex > 0 ? '<button class="btn btn-outline" id="prevBtn">上一题</button>' : '<div></div>');
+    navHtml += '<button class="btn btn-primary" id="nextBtn">' + (isLast ? '查看结果' : '下一题') + '</button>';
+  } else {
+    navHtml += (currentIndex > 0 ? '<button class="btn btn-outline" id="prevBtn">上一题</button>' : '<div></div>');
+    if (q.type === 'multi') {
+      var mSel = userAnswers[currentIndex];
+      var mDisabled = (!mSel || mSel === '');
+      navHtml += '<button class="btn btn-primary" id="confirmBtn" style="flex:1;' + (mDisabled ? 'opacity:.45;pointer-events:none' : '') + '">确认答案</button>';
+    } else {
+      var cSel = userAnswers[currentIndex];
+      var cDisabled = (cSel === undefined || cSel === '');
+      var confStyle = 'flex:1;' + (cDisabled ? 'opacity:.45;pointer-events:none' : '');
+      if (mode === 'test' && isLast) {
+        navHtml += '<button class="btn btn-primary" id="submitTestBtn" style="flex:1;background:#c0392b">提交</button>';
+        navHtml += '<button class="btn btn-primary" id="confirmBtn" style="' + confStyle + '">确认</button>';
+      } else {
+        navHtml += '<button class="btn btn-outline" id="skipBtn">下一题</button>';
+        navHtml += '<button class="btn btn-primary" id="confirmBtn" style="' + confStyle + '">确认</button>';
+      }
+    }
+  }
+
+  el.innerHTML = '<div class="quiz-header"><div class="quiz-info"><span>' + typeLabel + '</span> · 第 <span>' + qNum + '</span>/<span>' + total + '</span> 题' + (mode === 'test' ? '' : '<span class="chapter-tag">' + q.chapter + '</span>') + '</div></div><div class="question-card"><div class="question-num">第 ' + qNum + ' 题</div><div class="question-text">' + q.question + '</div>' + optionsHtml + feedbackHtml + '</div><div class="nav-btns">' + navHtml + '</div>';
+
+  if (!hasAnswered) {
+    if (q.type === 'single') {
+      el.querySelectorAll('.option').forEach(function(opt) {
+        opt.addEventListener('click', function() {
+          userAnswers[currentIndex] = opt.dataset.label;
+          renderQuiz(); persistSession();
+        });
+      });
+      var scb = el.querySelector('#confirmBtn');
+      if (scb) scb.addEventListener('click', function() {
+        if (!userAnswers[currentIndex]) return;
+        showFeedback[currentIndex] = true;
+        if (mode === 'practice') markDone(q);
+        renderQuiz(); renderHeader(); persistSession();
+      });
+    } else if (q.type === 'multi') {
+      if (!userAnswers[currentIndex]) userAnswers[currentIndex] = '';
+      el.querySelectorAll('.option').forEach(function(opt) {
+        opt.addEventListener('click', function() {
+          var label = opt.dataset.label;
+          var sel = userAnswers[currentIndex] || '';
+          userAnswers[currentIndex] = sel.indexOf(label) !== -1 ? sel.replace(label, '') : sel + label;
+          renderQuiz(); persistSession();
+        });
+      });
+      var cb = el.querySelector('#confirmBtn');
+      if (cb) cb.addEventListener('click', function() {
+        if (!userAnswers[currentIndex]) return;
+        showFeedback[currentIndex] = true;
+        if (mode === 'practice') markDone(q);
+        renderQuiz(); renderHeader(); persistSession();
+      });
+    } else if (q.type === 'tf') {
+      el.querySelectorAll('.option').forEach(function(opt) {
+        opt.addEventListener('click', function() {
+          userAnswers[currentIndex] = opt.dataset.answer === 'true';
+          renderQuiz(); persistSession();
+        });
+      });
+      var tcb = el.querySelector('#confirmBtn');
+      if (tcb) tcb.addEventListener('click', function() {
+        if (userAnswers[currentIndex] === undefined) return;
+        showFeedback[currentIndex] = true;
+        if (mode === 'practice') markDone(q);
+        renderQuiz(); renderHeader(); persistSession();
+      });
+    }
+    var sb = el.querySelector('#skipBtn');
+    if (sb) sb.addEventListener('click', function() { currentIndex++; renderQuiz(); renderHeader(); persistSession(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    var stb = el.querySelector('#submitTestBtn');
+    if (stb) stb.addEventListener('click', function() {
+      var ok = confirm('确定要提交吗？未作答的题目将计为错误。');
+      if (ok) { renderResult(el); renderHeader(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    });
+  }
+
+  var pb = el.querySelector('#prevBtn');
+  if (pb) pb.addEventListener('click', function() { currentIndex--; renderQuiz(); renderHeader(); persistSession(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  var nb = el.querySelector('#nextBtn');
+  if (nb) nb.addEventListener('click', function() { currentIndex++; renderQuiz(); renderHeader(); persistSession(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+}
+
+function renderResult(el) {
+  var total = currentQuestions.length;
+  var correct = 0, singleTotal = 0, singleCorrect = 0, multiTotal = 0, multiCorrect = 0, tfTotal = 0, tfCorrect = 0;
+  var wrongIdx = [];
+  currentQuestions.forEach(function(q, i) {
+    var ua = userAnswers[i], isCorrect;
+    if (q.type === 'multi') { isCorrect = (ua || '').split('').sort().join('') === q.answer; }
+    else { isCorrect = ua === q.answer; }
+    if (isCorrect) correct++; else wrongIdx.push(i);
+    if (q.type === 'single') { singleTotal++; if (isCorrect) singleCorrect++; }
+    else if (q.type === 'multi') { multiTotal++; if (isCorrect) multiCorrect++; }
+    else { tfTotal++; if (isCorrect) tfCorrect++; }
+  });
+  var score = mode === 'test' ? correct * 2 : correct;
+  var maxScore = mode === 'test' ? total * 2 : total;
+  var pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  var gridHtml = '';
+  if (singleTotal > 0) gridHtml += '<div class="result-stat"><div class="num">' + singleCorrect + '/' + singleTotal + '</div><div class="label">单选题</div></div>';
+  if (multiTotal > 0) gridHtml += '<div class="result-stat"><div class="num">' + multiCorrect + '/' + multiTotal + '</div><div class="label">多选题</div></div>';
+  if (tfTotal > 0) gridHtml += '<div class="result-stat"><div class="num">' + tfCorrect + '/' + tfTotal + '</div><div class="label">判断题</div></div>';
+
+  el.innerHTML = '<div class="result-card"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px">' + (mode === 'test' ? '测试完成' : '章节完成') + '</div><div class="result-score">' + score + '<span style="font-size:18px;color:var(--text-secondary);font-weight:400"> / ' + maxScore + '</span></div><div class="result-detail">正确率 ' + pct + '% · 共 ' + total + ' 题，答对 ' + correct + ' 题</div><div class="result-grid">' + gridHtml + '</div><div style="display:flex;gap:10px"><button class="btn btn-outline" id="reviewBtn" style="flex:1">查看错题 (' + wrongIdx.length + ')</button><button class="btn btn-primary" id="restartBtn" style="flex:1">' + (mode === 'test' ? '重新测试' : '返回') + '</button></div></div>';
+
+  el.querySelector('#restartBtn').addEventListener('click', function() {
+    if (mode === 'test') { currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0; startTest(); }
+    else { mode = null; subMode = null; currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0; persistSession(); renderMain(); }
+  });
+  el.querySelector('#reviewBtn').addEventListener('click', function() {
+    if (wrongIdx.length === 0) { alert('全部正确，没有错题！'); return; }
+    currentIndex = wrongIdx[0];
+    renderQuiz(); renderHeader(); persistSession();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+loadPracticeDone();
+document.getElementById('headerBackBtn').addEventListener('click', goBack);
+
+function renderResumeBanner() {
+  var main = document.getElementById('main');
+  if (!main) return;
+  var banner = document.createElement('div');
+  banner.style.cssText = 'background:#eef2fa;border:1px solid #2d5a9e;color:#1e3a5f;padding:12px 16px;border-radius:8px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;flex-wrap:wrap';
+  banner.innerHTML = '<span>检测到上次的答题进度：第 <strong id="resumeIdx"></strong> 题（共 ' + currentQuestions.length + ' 题）</span><span style="display:flex;gap:8px"><button id="resumeBtn" style="background:#1e3a5f;color:#fff;border:none;border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer;font-weight:600">继续答题</button><button id="discardBtn" style="background:#fff;color:#6b7280;border:1px solid #d1d5db;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer">放弃进度</button></span>';
+  main.insertBefore(banner, main.firstChild);
+  document.getElementById('resumeIdx').textContent = currentIndex + 1;
+  document.getElementById('resumeBtn').addEventListener('click', function() { renderMain(); });
+  document.getElementById('discardBtn').addEventListener('click', function() {
+    mode = null; subMode = null; currentQuestions = []; currentIndex = 0;
+    userAnswers = {}; showFeedback = {};
+    persistSession();
+    renderMain();
+  });
+}
+
+function startApp() {
+  if (resumeSession()) {
+    renderModeSelect(document.getElementById('main'));
+    renderResumeBanner();
+  } else {
+    renderMain();
+  }
+}
+
+window.addEventListener('beforeunload', persistSession);
+
+startApp();
+</script>
+</body>
+</html>
