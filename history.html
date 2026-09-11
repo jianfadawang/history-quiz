@@ -360,12 +360,25 @@ function renderMain() {
 
 function renderModeSelect(el) {
   var totalCount = ALL_QUESTIONS.length;
-  el.innerHTML = '<div class="page-title"><h2>中国近现代史纲要</h2><p>题库练习与测试系统 · 共 ' + totalCount + ' 题</p></div><div class="mode-grid"><div class="mode-card" data-mode="practice"><div class="icon">📝</div><h3>刷题模式</h3><p>按题型分类练习<br>即时反馈，记录进度</p></div><div class="mode-card" data-mode="test"><div class="icon">📋</div><h3>测试模式</h3><p>单选20题 + 多选20题 + 判断10题<br>每题2分，满分100分</p></div></div>';
+  var testDesc = '';
+  var tc = (SITE_CONFIG && SITE_CONFIG.testCounts) || { single: 20, multi: 20, tf: 10 };
+  var parts = [];
+  if (tc.single) parts.push('单选' + tc.single + '题');
+  if (tc.multi) parts.push('多选' + tc.multi + '题');
+  if (tc.tf) parts.push('判断' + tc.tf + '题');
+  testDesc = parts.join(' + ');
+  el.innerHTML = '<div class="page-title"><h2>中国近现代史纲要</h2><p>题库练习与测试系统 · 共 ' + totalCount + ' 题</p></div><div class="mode-grid"><div class="mode-card" data-mode="practice"><div class="icon">📝</div><h3>刷题模式</h3><p>按题型分类练习<br>即时反馈，记录进度</p></div><div class="mode-card" data-mode="test"><div class="icon">📋</div><h3>测试模式</h3><p>' + testDesc + '<br>每题2分</p></div></div>';
   el.querySelectorAll('.mode-card').forEach(function(card) {
     card.addEventListener('click', function() {
       mode = card.dataset.mode;
       currentQuestions = []; userAnswers = {}; showFeedback = {}; currentIndex = 0;
-      if (mode === 'test') { startTest(); } else { persistSession(); renderMain(); }
+      if (mode === 'test') { startTest(); }
+      else if (SITE_CONFIG && SITE_CONFIG.subModes && SITE_CONFIG.subModes.length === 1) {
+        subMode = SITE_CONFIG.subModes[0];
+        currentQuestions = ALL_QUESTIONS.filter(function(q) { return q.type === subMode; });
+        persistSession();
+        renderMain();
+      } else { persistSession(); renderMain(); }
     });
   });
 }
@@ -373,7 +386,13 @@ function renderModeSelect(el) {
 function renderSubModeSelect(el) {
   var counts = { single: 0, multi: 0, tf: 0 };
   ALL_QUESTIONS.forEach(function(q) { counts[q.type]++; });
-  el.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px"><button class="btn btn-outline btn-sm" id="backBtn">← 返回</button><h2 style="font-weight:600;font-size:17px">刷题模式 · 选择题型</h2></div><div class="sub-mode-grid"><div class="sub-mode-card" data-sub="single">单选题<br><span style="font-size:12px;color:var(--text-secondary);font-weight:400">' + counts.single + ' 题</span></div><div class="sub-mode-card" data-sub="multi">多选题<br><span style="font-size:12px;color:var(--text-secondary);font-weight:400">' + counts.multi + ' 题</span></div><div class="sub-mode-card" data-sub="tf">判断题<br><span style="font-size:12px;color:var(--text-secondary);font-weight:400">' + counts.tf + ' 题</span></div></div>';
+  var subs = (SITE_CONFIG && SITE_CONFIG.subModes) || ['single', 'multi', 'tf'];
+  var labels = { single: '单选题', multi: '多选题', tf: '判断题' };
+  var cardsHtml = '';
+  subs.forEach(function(s) {
+    cardsHtml += '<div class="sub-mode-card" data-sub="' + s + '">' + labels[s] + '<br><span style="font-size:12px;color:var(--text-secondary);font-weight:400">' + counts[s] + ' 题</span></div>';
+  });
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px"><button class="btn btn-outline btn-sm" id="backBtn">← 返回</button><h2 style="font-weight:600;font-size:17px">刷题模式 · 选择题型</h2></div><div class="sub-mode-grid">' + cardsHtml + '</div>';
   el.querySelector('#backBtn').addEventListener('click', function() { mode = null; persistSession(); renderMain(); });
   el.querySelectorAll('.sub-mode-card').forEach(function(card) {
     card.addEventListener('click', function() {
@@ -386,10 +405,37 @@ function renderSubModeSelect(el) {
   });
 }
 
+function coveragePick(pool, n) {
+  var byK = {};
+  pool.forEach(function(q) {
+    var k = q.kpoint || '其他';
+    (byK[k] = byK[k] || []).push(q);
+  });
+  var keys = shuffle(Object.keys(byK));
+  var picked = [];
+  var pickedSet = {};
+  function markPicked(q) { picked.push(q); pickedSet[q.id + '_' + q.chapter] = true; }
+  keys.forEach(function(k) {
+    var arr = shuffle(byK[k]);
+    arr.sort(function(a, b) { return (b.hot || 0) - (a.hot || 0); });
+    if (arr.length) markPicked(arr[0]);
+  });
+  if (picked.length > n) picked = picked.slice(0, n);
+  var rest = shuffle(pool.filter(function(q) { return !pickedSet[q.id + '_' + q.chapter]; }));
+  rest.sort(function(a, b) { return (b.hot || 0) - (a.hot || 0); });
+  picked = picked.concat(rest.slice(0, n - picked.length));
+  return shuffle(picked);
+}
+
 function startTest() {
-  var singles = shuffle(ALL_QUESTIONS.filter(function(q) { return q.type === 'single'; })).slice(0, 20);
-  var multis = shuffle(ALL_QUESTIONS.filter(function(q) { return q.type === 'multi'; })).slice(0, 20);
-  var tfs = shuffle(ALL_QUESTIONS.filter(function(q) { return q.type === 'tf'; })).slice(0, 10);
+  var tc = (SITE_CONFIG && SITE_CONFIG.testCounts) || { single: 20, multi: 20, tf: 10 };
+  var singlesPool = ALL_QUESTIONS.filter(function(q) { return q.type === 'single'; });
+  var multisPool = ALL_QUESTIONS.filter(function(q) { return q.type === 'multi'; });
+  var tfsPool = ALL_QUESTIONS.filter(function(q) { return q.type === 'tf'; });
+  var useCoverage = SITE_CONFIG && SITE_CONFIG.testSelection === 'coverage';
+  var singles = useCoverage ? coveragePick(singlesPool, tc.single || 0) : shuffle(singlesPool).slice(0, tc.single || 0);
+  var multis = shuffle(multisPool).slice(0, tc.multi || 0);
+  var tfs = shuffle(tfsPool).slice(0, tc.tf || 0);
   currentQuestions = singles.concat(multis).concat(tfs);
   currentIndex = 0; userAnswers = {}; showFeedback = {};
   persistSession();
